@@ -5,8 +5,8 @@ Trzy środowiska Claude. Wybierz swoje.
 ## Claude Code (terminal) — zalecane
 
 ```bash
-# 1. Pobierz repo
-git clone https://github.com/<twoj-user>/cykl-lifecycle.git
+# 1. Pobierz repo — URL skopiuj z zielonego przycisku "Code → HTTPS" na stronie repo
+git clone https://github.com/UZYTKOWNIK/cykl-lifecycle.git
 cd cykl-lifecycle
 
 # 2. Wgraj skille globalnie

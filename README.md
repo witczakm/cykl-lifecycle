@@ -77,7 +77,12 @@ Komendy (`/start`, `/zamknij`…) wpisujesz po prostu w rozmowie z agentem.
 
 ## Instalacja — wybierz narzędzie
 
-Pobierz repo: ZIP ze strony [Releases](../../releases/latest) albo `git clone`. Wejdź do folderu i wybierz swoją ścieżkę:
+Najpierw pobierz repo — prosto z tej strony, zielonym przyciskiem **Code** (u góry, z ikoną `< >`):
+
+- **Bez terminala:** **Code → Download ZIP**, potem rozpakuj archiwum.
+- **Z terminalem:** **Code → Copy URL (HTTPS)**, potem `git clone` z wklejonym adresem (np. `git clone https://github.com/UZYTKOWNIK/cykl-lifecycle.git`).
+
+Wejdź do folderu `cykl-lifecycle` i wybierz swoją ścieżkę:
 
 ### ▶ Claude Code (terminal)
 
