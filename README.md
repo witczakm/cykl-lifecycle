@@ -101,9 +101,15 @@ Skrypt pobiera 7 skilli **wprost z repo** i kopiuje do `~/.claude/skills` i/lub 
 
 > Chcesz zobaczyć, co odpalasz? Otwórz [`install.sh`](install.sh) — kilkanaście linii. (`curl … | bash` uruchamia kod z sieci; rób to tylko z zaufanych repo — np. swojego.)
 
-### ▶ Claude Cowork / Claude.ai (bez terminala)
+### ▶ Claude Cowork (desktop) — najprościej, jeden plik
 
-**Settings → Capabilities → Skills → Add skill** i dodaj 7 folderów `skills/cykl-*` osobno (repo pobierz zielonym przyciskiem **Code → Download ZIP**). W wersji web skille pomogą w planowaniu, ale zapis do plików projektu wymaga Claude Code, Codeksa lub Cowork.
+Pobierz **[`cykl-lifecycle.plugin`](cykl-lifecycle.plugin)** (na stronie pliku kliknij **Download**) i **otwórz go w Cowork** — przeciągnij plik do rozmowy; pokaże się przycisk **Zainstaluj**, który wgra **wszystkie 7 skilli naraz**. Potem wpisz `/kickoff`. Bez pobierania repo, bez dodawania folderów po kolei.
+
+Wariant zapasowy (ręcznie): **Settings → Capabilities → Skills → Add skill** → dodaj 7 folderów `skills/cykl-*` osobno.
+
+### ▶ Claude.ai (web / mobile)
+
+**Settings → Capabilities → Skills → Add skill** (7 folderów osobno). Wersja web nie ma dostępu do plików — pomoże w planowaniu, ale zapis do plików projektu wymaga Cowork, Claude Code lub Codeksa.
 
 ### ▶ Instalacja ręczna (bez skryptu)
 
