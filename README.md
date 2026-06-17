@@ -79,14 +79,21 @@ Komendy (`/start`, `/zamknij`…) wpisujesz po prostu w rozmowie z agentem.
 
 ### ⚡ Jedną komendą — wprost z GitHuba (Claude Code / Codex)
 
+**Codex + Claude (oba naraz):**
+
 ```bash
-# Codex + Claude (oba naraz):
 curl -fsSL https://raw.githubusercontent.com/witczakm/cykl-lifecycle/main/install.sh | bash
+```
 
-# tylko Codex:
+**Tylko Codex:**
+
+```bash
 curl -fsSL https://raw.githubusercontent.com/witczakm/cykl-lifecycle/main/install.sh | bash -s -- codex
+```
 
-# tylko Claude:
+**Tylko Claude:**
+
+```bash
 curl -fsSL https://raw.githubusercontent.com/witczakm/cykl-lifecycle/main/install.sh | bash -s -- claude
 ```
 
@@ -100,10 +107,18 @@ Skrypt pobiera 7 skilli **wprost z repo** i kopiuje do `~/.claude/skills` i/lub 
 
 ### ▶ Instalacja ręczna (bez skryptu)
 
-Pobierz repo (**Code → Download ZIP** albo `git clone`), wejdź do folderu `cykl-lifecycle` i:
+Pobierz repo (**Code → Download ZIP** albo `git clone`), wejdź do folderu `cykl-lifecycle` i wgraj skille.
+
+**Claude Code:**
+
 ```bash
-mkdir -p ~/.claude/skills && cp -r skills/cykl-* ~/.claude/skills/   # Claude Code
-mkdir -p ~/.agents/skills && cp -r skills/cykl-* ~/.agents/skills/   # Codex
+mkdir -p ~/.claude/skills && cp -r skills/cykl-* ~/.claude/skills/
+```
+
+**Codex:**
+
+```bash
+mkdir -p ~/.agents/skills && cp -r skills/cykl-* ~/.agents/skills/
 ```
 
 > Szczegóły i troubleshooting: **[docs/INSTALL-claude.md](docs/INSTALL-claude.md)** · **[docs/INSTALL-codex.md](docs/INSTALL-codex.md)**.
