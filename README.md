@@ -103,7 +103,7 @@ Skrypt pobiera 7 skilli **wprost z repo** i kopiuje do `~/.claude/skills` i/lub 
 
 ### ▶ Claude Cowork (desktop) — najprościej, jeden plik
 
-Pobierz **[`cykl-lifecycle.plugin`](cykl-lifecycle.plugin)** (na stronie pliku kliknij **Download**) i **otwórz go w Cowork** — przeciągnij plik do rozmowy; pokaże się przycisk **Zainstaluj**, który wgra **wszystkie 7 skilli naraz**. Potem wpisz `/kickoff`. Bez pobierania repo, bez dodawania folderów po kolei.
+Pobierz **[`cykl-lifecycle.plugin`](https://github.com/witczakm/cykl-lifecycle/raw/main/cykl-lifecycle.plugin)** (klik = pobranie pliku) i **otwórz go w Cowork** — przeciągnij plik do rozmowy; pokaże się przycisk **Zainstaluj**, który wgra **wszystkie 7 skilli naraz**. Potem wpisz `/kickoff`. Bez pobierania repo, bez dodawania folderów po kolei.
 
 Wariant zapasowy (ręcznie): **Settings → Capabilities → Skills → Add skill** → dodaj 7 folderów `skills/cykl-*` osobno.
 
