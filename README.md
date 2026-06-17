@@ -3,6 +3,8 @@
 > **Pamięć projektu dla agentów AI.** Prowadź jeden projekt przez dziesiątki sesji z Claude lub Codex — model na starcie każdej sesji wie, gdzie skończyłeś i co jest następne.
 >
 > *Multi-session memory for AI coding agents. Works with Claude Code, OpenAI Codex & Claude Cowork. Polish-language skills.*
+>
+> 🇬🇧 English version: **[witczakm/cycle-lifecycle](https://github.com/witczakm/cycle-lifecycle)**
 
 [![Version](https://img.shields.io/badge/version-2.4.0-blue)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
