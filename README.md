@@ -75,47 +75,36 @@ Komendy (`/start`, `/zamknij`…) wpisujesz po prostu w rozmowie z agentem.
 
 ---
 
-## Instalacja — wybierz narzędzie
+## Instalacja
 
-Najpierw pobierz repo — prosto z tej strony, zielonym przyciskiem **Code** (u góry, z ikoną `< >`):
-
-- **Bez terminala:** **Code → Download ZIP**, potem rozpakuj archiwum.
-- **Z terminalem:** **Code → Copy URL (HTTPS)**, potem `git clone` z wklejonym adresem (np. `git clone https://github.com/UZYTKOWNIK/cykl-lifecycle.git`).
-
-Wejdź do folderu `cykl-lifecycle` i wybierz swoją ścieżkę:
-
-### ▶ Claude Code (terminal)
+### ⚡ Jedną komendą — wprost z GitHuba (Claude Code / Codex)
 
 ```bash
-mkdir -p ~/.claude/skills
-cp -r skills/cykl-* ~/.claude/skills/
+# Claude Code + Codex naraz (domyślnie):
+curl -fsSL https://raw.githubusercontent.com/TWOJLOGIN/cykl-lifecycle/main/install.sh | bash
+
+# tylko jedna platforma — dodaj argument:
+curl -fsSL https://raw.githubusercontent.com/TWOJLOGIN/cykl-lifecycle/main/install.sh | bash -s -- claude
+curl -fsSL https://raw.githubusercontent.com/TWOJLOGIN/cykl-lifecycle/main/install.sh | bash -s -- codex
 ```
 
-Zrestartuj sesję, wejdź do katalogu projektu, wpisz `/kickoff`.
+Skrypt pobiera 7 skilli **wprost z repo** i kopiuje do `~/.claude/skills` i/lub `~/.agents/skills` — nic nie ściągasz ręcznie. Potem zrestartuj agenta i wpisz `/kickoff` (Claude) albo `$cykl-kickoff` (Codex). Nie masz Codeksa? `npm install -g @openai/codex`.
 
-### ▶ OpenAI Codex (terminal)
+> Chcesz zobaczyć, co odpalasz? Otwórz [`install.sh`](install.sh) — kilkanaście linii. (`curl … | bash` uruchamia kod z sieci; rób to tylko z zaufanych repo — np. swojego.)
 
-Nie masz Codeksa? Zainstaluj i zaloguj się:
+### ▶ Claude Cowork / Claude.ai (bez terminala)
+
+**Settings → Capabilities → Skills → Add skill** i dodaj 7 folderów `skills/cykl-*` osobno (repo pobierz zielonym przyciskiem **Code → Download ZIP**). W wersji web skille pomogą w planowaniu, ale zapis do plików projektu wymaga Claude Code, Codeksa lub Cowork.
+
+### ▶ Instalacja ręczna (bez skryptu)
+
+Pobierz repo (**Code → Download ZIP** albo `git clone`), wejdź do folderu `cykl-lifecycle` i:
 ```bash
-npm install -g @openai/codex   # uwaga: pakiet @openai/codex, nie "codex"
-codex                          # zaloguj się kontem ChatGPT
+mkdir -p ~/.claude/skills && cp -r skills/cykl-* ~/.claude/skills/   # Claude Code
+mkdir -p ~/.agents/skills && cp -r skills/cykl-* ~/.agents/skills/   # Codex
 ```
-Następnie wgraj skille:
-```bash
-mkdir -p ~/.agents/skills
-cp -r skills/cykl-* ~/.agents/skills/
-```
-Zrestartuj Codex, wpisz `/skills` (powinno być 7), potem `$cykl-kickoff`.
 
-### ▶ Claude Cowork (desktop, bez terminala)
-
-Otwórz **Settings → Capabilities → Skills → Add skill** i dodaj każdy z 7 folderów `skills/cykl-*` osobno.
-
-### ▶ Claude.ai (web / mobile)
-
-**Settings → Capabilities → Skills → Add skill** (jak wyżej). Uwaga: wersja web nie ma dostępu do plików — pomoże w planowaniu, ale zapis do plików projektu wymaga Claude Code, Codeksa lub Cowork.
-
-> Szczegóły i rozwiązywanie problemów: **[docs/INSTALL-claude.md](docs/INSTALL-claude.md)** · **[docs/INSTALL-codex.md](docs/INSTALL-codex.md)**.
+> Szczegóły i troubleshooting: **[docs/INSTALL-claude.md](docs/INSTALL-claude.md)** · **[docs/INSTALL-codex.md](docs/INSTALL-codex.md)**.
 
 ---
 
