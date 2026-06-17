@@ -6,7 +6,7 @@ Trzy środowiska Claude. Wybierz swoje.
 
 ```bash
 # 1. Pobierz repo — URL skopiuj z zielonego przycisku "Code → HTTPS" na stronie repo
-git clone https://github.com/TWOJLOGIN/cykl-lifecycle.git
+git clone https://github.com/witczakm/cykl-lifecycle.git
 cd cykl-lifecycle
 
 # 2. Wgraj skille globalnie

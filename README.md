@@ -80,12 +80,14 @@ Komendy (`/start`, `/zamknij`…) wpisujesz po prostu w rozmowie z agentem.
 ### ⚡ Jedną komendą — wprost z GitHuba (Claude Code / Codex)
 
 ```bash
-# Claude Code + Codex naraz (domyślnie):
-curl -fsSL https://raw.githubusercontent.com/TWOJLOGIN/cykl-lifecycle/main/install.sh | bash
+# Codex + Claude (oba naraz):
+curl -fsSL https://raw.githubusercontent.com/witczakm/cykl-lifecycle/main/install.sh | bash
 
-# tylko jedna platforma — dodaj argument:
-curl -fsSL https://raw.githubusercontent.com/TWOJLOGIN/cykl-lifecycle/main/install.sh | bash -s -- claude
-curl -fsSL https://raw.githubusercontent.com/TWOJLOGIN/cykl-lifecycle/main/install.sh | bash -s -- codex
+# tylko Codex:
+curl -fsSL https://raw.githubusercontent.com/witczakm/cykl-lifecycle/main/install.sh | bash -s -- codex
+
+# tylko Claude:
+curl -fsSL https://raw.githubusercontent.com/witczakm/cykl-lifecycle/main/install.sh | bash -s -- claude
 ```
 
 Skrypt pobiera 7 skilli **wprost z repo** i kopiuje do `~/.claude/skills` i/lub `~/.agents/skills` — nic nie ściągasz ręcznie. Potem zrestartuj agenta i wpisz `/kickoff` (Claude) albo `$cykl-kickoff` (Codex). Nie masz Codeksa? `npm install -g @openai/codex`.

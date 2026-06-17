@@ -2,13 +2,13 @@
 # cykl-lifecycle — instalator. Pobiera 7 skilli WPROST z GitHuba i kopiuje do agenta.
 #
 # Użycie (wprost z GitHuba, nic nie trzeba ściągać ręcznie):
-#   curl -fsSL https://raw.githubusercontent.com/TWOJLOGIN/cykl-lifecycle/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/witczakm/cykl-lifecycle/main/install.sh | bash
 #   ... | bash -s -- claude    # tylko ~/.claude/skills (Claude Code / Cowork)
 #   ... | bash -s -- codex     # tylko ~/.agents/skills (OpenAI Codex)
 #   ... | bash -s -- both      # oba (domyślnie)
 set -euo pipefail
 
-REPO="TWOJLOGIN/cykl-lifecycle"   # <-- podmień OWNER na swój login GitHub
+REPO="witczakm/cykl-lifecycle"
 BRANCH="main"
 TARGET="${1:-both}"
 
