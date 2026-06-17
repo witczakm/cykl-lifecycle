@@ -1,0 +1,6 @@
+# Codex-only metadata (ignorowane przez Claude Code / Cowork). Format: developers.openai.com/codex/skills
+interface:
+  display_name: "cykl-migawka — snapshot w trakcie"
+  short_description: "Lekki zapis stanu po decyzji: nadpisz HANDOFF, odśwież CONFIG i status kroku. Bez lekcji, bez commita."
+policy:
+  allow_implicit_invocation: true

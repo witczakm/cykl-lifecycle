@@ -1,0 +1,24 @@
+{
+  "name": "cykl-lifecycle",
+  "version": "2.3.0",
+  "description": "Polskie skille do prowadzenia projektów wielosesyjnych — pamięć projektu żyje w plikach (HANDOFF/ROADMAP/LESSONS), /start na wejściu, /zamknij na wyjściu. Dual-compatible (Codex + Claude).",
+  "author": {
+    "name": "Michał Witczak"
+  },
+  "license": "MIT",
+  "keywords": ["productivity", "project-management", "multi-session", "polish", "cykl"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "cykl-lifecycle",
+    "shortDescription": "Prowadzenie projektów wielosesyjnych: pozycja etap/krok, drift-check, lekcje.",
+    "longDescription": "7 skilli pętli sesji: cykl-kickoff, cykl-start, cykl-migawka, cykl-roadmap, cykl-lekcja, cykl-lekcja-globalna, cykl-zamknij. Stan projektu żyje w plikach, nie w przewijaniu czatu — każda sesja zaczyna od $cykl-start (gdzie jesteśmy + jeden następny ruch) i kończy $cykl-zamknij (spójny zapis + gotowy commit). Cel: prowadzić projekt przez dziesiątki sesji bez gubienia kontekstu i bez marnowania tokenów na jeden długi wątek.",
+    "developerName": "Michał Witczak",
+    "category": "Productivity",
+    "capabilities": ["Read", "Write"],
+    "defaultPrompt": [
+      "$cykl-start — wejdź w sesję projektu (gdzie jesteśmy + następny ruch)",
+      "$cykl-kickoff — załóż nowy projekt wielosesyjny"
+    ],
+    "brandColor": "#3B82F6"
+  }
+}

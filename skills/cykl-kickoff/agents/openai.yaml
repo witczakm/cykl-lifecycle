@@ -1,0 +1,8 @@
+# Codex-only metadata (ignorowane przez Claude Code / Cowork). Format: developers.openai.com/codex/skills
+interface:
+  display_name: "cykl-kickoff — założenie projektu"
+  short_description: "Załóż nowy projekt wielosesyjny (struktura + dokumenty stanu). Komenda jednorazowa — wywołuj jawnie: $cykl-kickoff."
+policy:
+  # Tworzy strukturę plików — przy fałszywym odpaleniu najkosztowniejsze (scaffold w cwd).
+  # Dlatego TYLKO jawne wywołanie ($cykl-kickoff), zwłaszcza przy aktywnym frameworku 'superpowers'.
+  allow_implicit_invocation: false

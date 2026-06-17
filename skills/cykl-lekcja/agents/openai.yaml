@@ -1,0 +1,6 @@
+# Codex-only metadata (ignorowane przez Claude Code / Cowork). Format: developers.openai.com/codex/skills
+interface:
+  display_name: "cykl-lekcja — wniosek projektowy"
+  short_description: "Dopisz wniosek do LESSONS_CANON projektu w formacie Reguła / Dlaczego / Test operacyjny."
+policy:
+  allow_implicit_invocation: true

@@ -1,0 +1,20 @@
+{
+  "name": "michal-personal",
+  "interface": {
+    "displayName": "Michał — personal plugins"
+  },
+  "plugins": [
+    {
+      "name": "cykl-lifecycle",
+      "source": {
+        "source": "local",
+        "path": "./cykl-lifecycle"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

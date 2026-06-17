@@ -1,0 +1,7 @@
+# Codex-only metadata (ignorowane przez Claude Code / Cowork). Format: developers.openai.com/codex/skills
+interface:
+  display_name: "cykl-zamknij — domknięcie sesji"
+  short_description: "Domknij sesję: zaktualizuj dokumenty stanu, złap lekcje, przygotuj commit (nie wykonuje git)."
+policy:
+  # Intencyjny ("domknij sesję") + mocne negatywne triggery (plik/okno/PR) → implicit OK.
+  allow_implicit_invocation: true

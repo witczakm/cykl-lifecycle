@@ -1,0 +1,6 @@
+# Codex-only metadata (ignorowane przez Claude Code / Cowork). Format: developers.openai.com/codex/skills
+interface:
+  display_name: "cykl-roadmap — pozycja i sekwencja"
+  short_description: "Pokaż gdzie jesteśmy: etap X/N · krok Y/M + statusy. Domyślnie read-only."
+policy:
+  allow_implicit_invocation: true

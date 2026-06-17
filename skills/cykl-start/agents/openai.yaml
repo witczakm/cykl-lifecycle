@@ -1,0 +1,14 @@
+# Codex Agent Skills — metadane UI + polityka wywołania.
+# Źródło formatu: https://developers.openai.com/codex/skills
+# Ten plik czyta WYŁĄCZNIE Codex. Claude Code / Cowork go ignorują —
+# dlatego skill pozostaje dual-compatible: jeden SKILL.md, dwie platformy.
+
+interface:
+  display_name: "cykl-start — wejście w sesję"
+  short_description: "Wczytaj stan projektu wielosesyjnego z dokumentów i zreferuj: gdzie jesteśmy + jeden następny ruch."
+
+policy:
+  # /start ma odpalać się także automatycznie przy powrocie do projektu,
+  # więc zostawiamy implicit = true (domyślne). Negatywne triggery w
+  # description chronią przed fałszywym odpaleniem (npm start, docker start...).
+  allow_implicit_invocation: true
