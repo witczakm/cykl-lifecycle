@@ -2,7 +2,7 @@
 name: cykl-roadmap
 description: Pokaż pozycję i sekwencję prac z ROADMAP projektu — na którym etapie projektu jesteśmy i w którym kroku tego etapu — opcjonalnie zaktualizuj na wyraźne polecenie. Użyj gdy użytkownik pisze "/roadmap", "co po kolei w projekcie", "pokaż plan projektu", "pokaż postęp", "na którym etapie jesteśmy", "jaka jest kolejność prac". Domyślnie tylko pokazuje (read-only). NIE używaj gdy mowa o roadmapie produktu klienta, firmy zewnętrznej lub ogólnej strategii biznesowej — skill czyta wyłącznie docs/ROADMAP.md bieżącego projektu lifecycle. NIE używaj gdy pytanie dotyczy kolejności kroków w konkretnym bieżącym zadaniu — ten skill czyta docs/ROADMAP.md projektu lifecycle, nie odpowiada na ogólne pytania "co robić dalej".
 ---
-<!-- cykl-lifecycle v2.3.0 -->
+<!-- cykl-lifecycle v2.6.0 -->
 
 # /roadmap — pozycja i sekwencja prac
 
@@ -25,6 +25,7 @@ Domyślnie read-only — przypadkowa zmiana roadmapy to drift.
 3. **Aktualizuj TYLKO na wyraźne polecenie** ("/roadmap update <powód>" lub "zaktualizuj roadmap"):
    - Zmiana statusów / Pozycji / rozbicia etapu — według polecenia.
    - Treści etapów i kroków nie usuwaj i nie przeredagowuj przy zmianie statusu. Usunięty krok znika bezgłośnie — nikt nie zauważy braku. Zmiana zakresu wymaga powodu od użytkownika + wpisu w changelogu.
+   - Etap na DONE tylko przy spełnionej **Bramce wyjścia** (kolumna w tabeli etapów) — pokaż, czym została spełniona. Komplet kroków DONE to warunek konieczny, nie wystarczający.
    - Następny etap rozbijaj na kroki dopiero gdy bieżący się domyka (F6). Rozbicie z wyprzedzeniem zdezaktualizuje się zanim do niego dojdziesz.
    - Zsynchronizuj nagłówek (Wersja + Ostatnia aktualizacja) + wiersz changelogu w tym samym ruchu.
    - Nie kopiuj tu live-state (commity/testy/daty) — to żyje w PROJECT_CONFIG.

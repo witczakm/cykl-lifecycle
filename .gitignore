@@ -1,4 +1,7 @@
 .DS_Store
 Thumbs.db
+# Artefakty wydania budowane przez ./build-plugin.sh — dołączane do release'u
+# na GitHubie, nie wersjonowane. (cykl-lifecycle.plugin jest wyjątkiem: leży
+# w repo, bo README linkuje do niego bezpośrednio przez raw URL.)
 *.zip
 .claude/

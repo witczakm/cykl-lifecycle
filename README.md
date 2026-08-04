@@ -6,7 +6,7 @@
 >
 > 🇬🇧 English version: **[witczakm/cycle-lifecycle](https://github.com/witczakm/cycle-lifecycle)**
 
-[![Version](https://img.shields.io/badge/version-2.4.0-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-2.6.0-blue)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Platformy](https://img.shields.io/badge/platformy-Claude%20Code%20%C2%B7%20Codex%20%C2%B7%20Cowork-orange)](#instalacja--wybierz-narz%C4%99dzie)
 [![Format](https://img.shields.io/badge/format-Agent%20Skills-blueviolet)](https://agentskills.io)
@@ -77,6 +77,22 @@ Komendy (`/start`, `/zamknij`…) wpisujesz po prostu w rozmowie z agentem.
 
 ---
 
+## Co nowego w 2.6.0
+
+Dwa wydania z sierpnia 2026 (2.5.0 i 2.6.0) naprawiają **mechanizmy**, nie opisy. Wspólny mianownik: reguła istniała, ale nic jej nie egzekwowało.
+
+| Zmiana | Dlaczego |
+|---|---|
+| **Bramka commita jest mechaniczna** — `set -euo pipefail` + `&&`, nie komentarz | warunek „nie commituj, jeśli…" był adnotacją w bloku; człowiek wkleja blok naraz, więc `git commit` wykonywał się mimo niespełnionego warunku |
+| **`/start` mierzy stan poza dokumentami** — nowe pole `STATE_PROBE` | drift-check porównywał dokumenty wyłącznie ze sobą, a trzy dokumenty potrafią zgodnie powtarzać tę samą nieprawdę. Spójność wewnętrzna to nie prawdziwość |
+| **Pola stanowe są NADPISYWANE po pomiarze**, nie dopisywane | w realnym projekcie pole „stan repo" spuchło przez sześć sesji do 1369 znaków i niosło trzy sprzeczne stany z trzech dat — czytający brał pierwszy, czyli najstarszy |
+| **Bramka wyjścia etapu jest sprawdzana** przy flipie na DONE | kolumna istniała w szablonie ROADMAP od 2.0, ale żaden skill jej nie czytał |
+| **Biała lista komend gita** — zakaz `git status`, `git add --dry-run`, `git stash` | tworzą `.git/index.lock`, którego mosty zdalne (Cowork / device bridge) nie potrafią usunąć — potrafi zablokować repo na kilka dni |
+
+Pełna lista zmian: **[CHANGELOG.md](CHANGELOG.md)**. Dlaczego akurat tak, z precedensami każdej decyzji: **[docs/ARCHITEKTURA-DECYZJE.md](docs/ARCHITEKTURA-DECYZJE.md)**.
+
+---
+
 ## Instalacja
 
 ### ⚡ Jedną komendą — wprost z GitHuba (Claude Code / Codex)
@@ -113,7 +129,25 @@ Wariant zapasowy (ręcznie): **Settings → Capabilities → Skills → Add skil
 
 **Settings → Capabilities → Skills → Add skill** (7 folderów osobno). Wersja web nie ma dostępu do plików — pomoże w planowaniu, ale zapis do plików projektu wymaga Cowork, Claude Code lub Codeksa.
 
-### ▶ Instalacja ręczna (bez skryptu)
+### ▶ Z gotowej paczki ZIP (bez gita, bez skryptu)
+
+Pobierz **[`cykl-lifecycle-skills.zip`](https://github.com/witczakm/cykl-lifecycle/releases/latest/download/cykl-lifecycle-skills.zip)** z najnowszego wydania i rozpakuj **wprost do katalogu skilli** — archiwum zawiera 7 folderów `cykl-*` w korzeniu, więc nie trzeba niczego przenosić:
+
+**Claude Code:**
+
+```bash
+mkdir -p ~/.claude/skills && unzip -o cykl-lifecycle-skills.zip -d ~/.claude/skills/
+```
+
+**Codex:**
+
+```bash
+mkdir -p ~/.agents/skills && unzip -o cykl-lifecycle-skills.zip -d ~/.agents/skills/
+```
+
+`-o` nadpisuje istniejące pliki, więc ta sama komenda służy do instalacji i do aktualizacji.
+
+### ▶ Instalacja ręczna (z klonu repo)
 
 Pobierz repo (**Code → Download ZIP** albo `git clone`), wejdź do folderu `cykl-lifecycle` i wgraj skille.
 
@@ -130,6 +164,21 @@ mkdir -p ~/.agents/skills && cp -r skills/cykl-* ~/.agents/skills/
 ```
 
 > Szczegóły i troubleshooting: **[docs/INSTALL-claude.md](docs/INSTALL-claude.md)** · **[docs/INSTALL-codex.md](docs/INSTALL-codex.md)**.
+
+### 🔄 Masz już starszą wersję?
+
+Sprawdź, co jest zainstalowane:
+
+```bash
+grep -h "cykl-lifecycle v" ~/.claude/skills/cykl-*/SKILL.md | sort -u   # Claude Code
+grep -h "cykl-lifecycle v" ~/.agents/skills/cykl-*/SKILL.md | sort -u   # Codex
+```
+
+Więcej niż jedna linia = wymieszane wersje, wgraj od nowa. Aktualizacja to ta sama komenda co instalacja — `install.sh` nadpisuje istniejące skille. **Zrestartuj agenta po aktualizacji**; skille ładują się na starcie sesji.
+
+W Cowork: pobierz świeży [`cykl-lifecycle.plugin`](https://github.com/witczakm/cykl-lifecycle/raw/main/cykl-lifecycle.plugin) i przeciągnij do rozmowy.
+
+**2.6.0 nie łamie kompatybilności** — `STATE_PROBE` jest opcjonalne, istniejące projekty działają bez migracji. Pełne ścieżki aktualizacji per środowisko: [Claude](docs/INSTALL-claude.md#aktualizacja-do-nowszej-wersji) · [Codex](docs/INSTALL-codex.md#aktualizacja-do-nowszej-wersji).
 
 ---
 
@@ -157,7 +206,7 @@ Następny ruch: zdefiniuj wymagania funkcjonalne (krok 1.1)
 Drift: brak.
 ```
 
-Pracujesz normalnie. Na koniec wpisz `/zamknij` — dostajesz podsumowanie i gotowy blok `git add + commit` do skopiowania.
+Pracujesz normalnie. Na koniec wpisz `/zamknij` — dostajesz podsumowanie i gotowy blok do skopiowania: sprawdzenie, czy pliki faktycznie zeszły na dysk, a po nim `git add` + `commit`. Blok jest spięty operatorem `&&`, więc jeśli sprawdzenie nie przejdzie, commit się nie wykona.
 
 ---
 
@@ -179,7 +228,9 @@ Codex to **agent** — wykonuje realne komendy i potrafi sięgnąć poza bieżą
 - ustaw rozsądny tryb zatwierdzania (`/approvals` w sesji),
 - **czytaj, co zatwierdzasz** — odrzucaj akcje poza projektem albo komendy systemowe (`pg_dump`, `npx`, `rm`…), których świadomie nie zleciłeś.
 
-Same skille cykla są bezpieczne: zapisują wyłącznie dokumenty stanu w katalogu projektu i **nigdy nie wykonują git** — dają tylko gotowy blok poleceń do wklejenia.
+Same skille cykla są bezpieczne: zapisują wyłącznie dokumenty stanu w katalogu projektu i **nigdy nie wykonują git mutującego** — `add`, `commit`, `push`, `stash` dostajesz jako gotowy blok do wklejenia, decyzja zostaje po Twojej stronie.
+
+Od 2.5.0 skille wykonują **komendy pomiarowe z zamkniętej białej listy** (`git rev-parse`, `git rev-list`, `git log`, `git show`, `git diff --stat`) — wyłącznie odczyt, żeby stan w dokumentach pochodził z pomiaru, a nie z przepisania. `git status`, `git add --dry-run` i `git stash` są **zakazane**: tworzą `.git/index.lock`, którego mosty zdalne nie potrafią usunąć.
 
 ---
 
@@ -198,10 +249,19 @@ projekt/
 
 | Plik | Aktualizuje | Zasada |
 |---|---|---|
-| `PROJECT_CONFIG.md` | `/migawka`, `/zamknij` | live-state: branch, status, decyzje |
+| `PROJECT_CONFIG.md` | `/migawka`, `/zamknij` | live-state + `STATE_PROBE`; pola stanowe nadpisywane po pomiarze |
 | `docs/HANDOFF.md` | `/migawka`, `/zamknij` | zawsze nadpisywany (stan „teraz") |
-| `docs/ROADMAP.md` | `/migawka`, `/roadmap`, `/zamknij` | statusy kroków, Pozycja |
+| `docs/ROADMAP.md` | `/migawka`, `/roadmap`, `/zamknij` | statusy kroków, Pozycja, bramki wyjścia etapów |
 | `docs/LESSONS_CANON.md` | `/lekcja` | dopisywany, nigdy nadpisywany |
+
+**Dwa typy pól w dokumentach stanu** — rozróżnienie wprowadzone w 2.5.0, bo ich pomylenie było najczęstszą przyczyną driftu:
+
+- **dziennikowe** (changelog, nagłówek, bieżący sprint) — przyrostowe: dopisujesz warstwę, poprzednia zostaje;
+- **stanowe** (stan repo, następna otwarta decyzja, publiczny URL, hash wdrożonego artefaktu) — mają **jedną** prawdziwą wartość i są **nadpisywane w całości po pomiarze**, ze znacznikiem `[zmierzone RRRR-MM-DD HH:MM UTC]`.
+
+Dopisanie do pola stanowego tworzy pole z kilkoma sprzecznymi stanami, w którym czytający — człowiek albo `/start` — bierze pierwszy, czyli najstarszy.
+
+**`STATE_PROBE`** to jedna komenda read-only, którą projekt deklaruje w `PROJECT_CONFIG`; `/start` ją wykonuje i porównuje wynik z zapisanym stanem. Dla repo git będzie to `git rev-parse --short HEAD`, dla aplikacji webowej — hash zbudowanego artefaktu, dla bazy — `count` na tabeli kontrolnej. Bez sondy drift-check porównuje dokumenty wyłącznie ze sobą i nie wykryje, że są zgodnie nieaktualne.
 
 ---
 
@@ -232,6 +292,13 @@ cykl-lifecycle/
 ├── CHANGELOG.md
 ├── LICENSE
 ├── CONTRIBUTING.md
+├── install.sh                   # instalator jednokomendowy (Claude i/lub Codex)
+├── build-plugin.sh              # buduje i WERYFIKUJE paczkę — uruchom po każdej zmianie w skills/
+├── cykl-lifecycle.plugin        # paczka dla Cowork — ZAWIERA WŁASNĄ KOPIĘ skills/
+├── packaging/
+│   └── plugin-README.md         # README widoczne po instalacji z paczki (inne niż to)
+├── .claude-plugin/
+│   └── plugin.json              # manifest pluginu Claude
 ├── .codex-plugin/
 │   └── plugin.json              # manifest pluginu Codeksa
 ├── marketplace.json             # osobisty marketplace Codeksa (instalacja jako plugin)
@@ -243,8 +310,13 @@ cykl-lifecycle/
 └── docs/
     ├── INSTALL-claude.md        # instalacja: Claude Code / Cowork / web
     ├── INSTALL-codex.md         # instalacja: Codex (skille albo plugin) + bezpieczeństwo
-    └── PRZEWODNIK-KOMEND.md     # przewodnik po komendach z przykładami
+    ├── PRZEWODNIK-KOMEND.md     # przewodnik po komendach z przykładami
+    └── ARCHITEKTURA-DECYZJE.md  # DLACZEGO system wygląda tak — decyzje z precedensami
 ```
+
+> ⚠️ **`cykl-lifecycle.plugin` to zip z własną kopią całego `skills/`.** Kto instaluje z tego pliku, dostaje treść z paczki, nie z repozytorium — więc **każda zmiana w `skills/` wymaga przebudowania paczki w tym samym commicie**: `./build-plugin.sh` (buduje i weryfikuje, że zawartość zgadza się z repo).
+>
+> Wersja żyje w **pięciu** miejscach naraz: oba manifesty, marker `<!-- cykl-lifecycle vX.Y.Z -->` w siedmiu `SKILL.md`, badge w README i nagłówek przewodnika — plus manifest wewnątrz paczki. Przed wydaniem: `grep -r "vSTARA" skills .claude-plugin .codex-plugin` ma dać zero.
 
 ---
 
@@ -253,6 +325,8 @@ cykl-lifecycle/
 Skille to pliki `SKILL.md` zgodne z [otwartym standardem Agent Skills](https://agentskills.io). Agent ładuje na starcie tylko ich nazwę + opis (progressive disclosure), a pełną treść dopiero gdy komenda lub kontekst pasują do triggera. Każdy skill ma klauzulę „NIE używaj gdy…", która chroni przed odpaleniem w złym momencie.
 
 Architektura odpowiada wzorcom dla długo działających agentów: lista kroków ze statusami (edytuje się tylko status), jeden krok na sesję, protokół „wczytaj stan" na wejściu (`/start`), czysty zapis + commit na końcu (`/zamknij`). **Zero automatyzacji bez Twojej zgody** — każda zmiana pokazywana jest jako diff, a `git commit` wykonujesz sam.
+
+Od 2.6.0 dwie reguły projektowe wynikające z analizy realnych awarii tego systemu. Po pierwsze: **warunek musi być sprawdzalny w środowisku, w którym ma działać.** Bramka wyrażona komentarzem (`# nie commituj, jeśli…`) nie zatrzyma niczego, bo człowiek wkleja cały blok naraz — dlatego warunki egzekwuje składnia powłoki. Po drugie: **stan zapisany w dokumencie musi mieć punkt oparcia poza dokumentami.** Trzy pliki potrafią zgodnie powtarzać tę samą nieaktualną informację i przejść każdy test spójności wewnętrznej — dlatego `/start` wykonuje `STATE_PROBE` i porównuje pomiar z zapisem, zamiast porównywać zapisy między sobą.
 
 Wariant dual-compatible: ten sam `SKILL.md` działa w Claude i Codeksie. Dodatkowy `agents/openai.yaml` (metadane + polityka wywołania) czyta tylko Codex — Claude go ignoruje. Status walidacji: wszystkie 7 skilli przetestowane na żywo na Claude i na Codex (gpt-5.5) — patrz [CHANGELOG](CHANGELOG.md).
 

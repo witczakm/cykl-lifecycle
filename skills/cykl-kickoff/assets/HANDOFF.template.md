@@ -32,7 +32,8 @@
 {...}
 
 **Następny ruch + dlaczego:**
-{...}
+{jeden krok — wykonywalny bez otwierania innych plików, zero placeholderów typu [TBD]}
+{KTO i CZYM: Claude Code | Codex | Cowork | Owner · model i poziom · TEN SAM czy NOWY wątek}
 
 ---
 

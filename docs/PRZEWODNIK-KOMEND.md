@@ -1,6 +1,6 @@
 # Przewodnik komend — zestaw cykl-lifecycle
 
-**Wersja:** 2.2.0  
+**Wersja:** 2.6.0  
 **Dla kogo:** każda osoba używająca zestawu skilli do prowadzenia projektów wielosesyjnych
 
 ---
@@ -62,9 +62,12 @@ Model zapyta: "Jak ma się nazywać projekt? Jakie są główne etapy (3-7 hase�
 
 **Co robi:**
 1. Czyta PROJECT_CONFIG, HANDOFF, ROADMAP, LESSONS_CANON
-2. Sprawdza, czy dokumenty są spójne (drift-check)
-3. Referuje: **Pozycja** (Etap X/N · krok Y/M), co ostatnio zamknięte, następny ruch (JEDEN krok)
-4. Zgłasza wykryte niespójności + wiszące lekcje globalne do zapisu
+2. **Mierzy stan poza dokumentami** — wykonuje `STATE_PROBE` z PROJECT_CONFIG i porównuje z zapisaną wartością
+3. Sprawdza, czy dokumenty są spójne między sobą (drift-check)
+4. Referuje: **Pozycja** (Etap X/N · krok Y/M), co ostatnio zamknięte, następny ruch (JEDEN krok)
+5. Zgłasza wykryte niespójności + wiszące lekcje globalne do zapisu
+
+> **Dlaczego krok 2 jest przed krokiem 3.** Trzy dokumenty potrafią zgodnie powtarzać tę samą nieaktualną informację i przejść drift-check bez zarzutu — spójność wewnętrzna to nie prawdziwość. Sonda daje jedyny punkt oparcia, który nie pochodzi z dokumentów. Jeśli nie odpowie po trzech próbach, `/start` wpisuje `[DO SPRAWDZENIA]` i **nie blokuje** wejścia w sesję.
 
 **Przykładowe użycie:**
 ```
@@ -102,10 +105,14 @@ Sesja: zaimplementowano endpoint /auth/login (krok 3) — testy przeszły.
 Nowa Pozycja: Etap 2/5 · krok 4/7 "Middleware JWT"
 Zaktualizowane: docs/HANDOFF.md v1.4.0, docs/ROADMAP.md v1.3.0
 Commit:
-  grep -n "Ostatnia aktualizacja" docs/HANDOFF.md docs/ROADMAP.md
-  git add docs/HANDOFF.md docs/ROADMAP.md PROJECT_CONFIG.md
-  git commit -m "sesja: endpoint login, krok 3/7 DONE"
+  set -euo pipefail
+  grep -n "Ostatnia aktualizacja" docs/HANDOFF.md docs/ROADMAP.md PROJECT_CONFIG.md \
+    | grep -q "$(date +%Y-%m-%d)" \
+    && git add docs/HANDOFF.md docs/ROADMAP.md PROJECT_CONFIG.md \
+    && git commit -m "sesja: endpoint login, krok 3/7 DONE"
 ```
+
+> **Dlaczego blok wygląda tak, a nie prościej.** Warunek „commituj tylko, jeśli daty w plikach są dzisiejsze" musi być **składnią**, nie komentarzem. Wcześniejsze wersje miały `# jeśli data nie jest dzisiejsza — nie commituj` jako adnotację — a człowiek wkleja cały blok naraz, więc `git commit` wykonywał się niezależnie od wyniku sprawdzenia. `set -o pipefail` jest tu obowiązkowe: bez niego `cmd | grep` zwraca kod wyjścia ostatniego elementu potoku i bramka przepuszcza błąd.
 
 **Nie używaj gdy:** sesja była tylko rozmową bez decyzji/zmian — wtedy tylko podsumuj słownie.
 
@@ -244,6 +251,15 @@ Gdy model aktualizuje nagłówek dokumentu (Wersja + data), zawsze dopisuje też
 **4. Nie musisz nic pamiętać między sesjami**  
 To jest cały sens systemu. `/start` odczyta aktualny stan. Pisz komendy, rób pracę, `/zamknij` — i zapomnij do następnej sesji.
 
+**5. Pola dziennikowe rosną, pola stanowe są nadpisywane**  
+Changelog i nagłówek dokumentu są **przyrostowe** — dopisujesz warstwę, poprzednia zostaje. Pola opisujące stan (stan repo, następna otwarta decyzja, publiczny adres, hash wdrożonego artefaktu) mają **jedną** prawdziwą wartość i są **nadpisywane w całości po pomiarze**, ze znacznikiem `[zmierzone RRRR-MM-DD HH:MM UTC]`. Dopisanie do pola stanowego robi z niego listę sprzecznych stanów, w której czytający bierze pierwszy — czyli najstarszy. Jeśli w takim polu siedzi też trwała wiedza (obejścia, ograniczenia narzędzi), rozszczep je na dwa: `REPO_STATE` nadpisywane i `REPO_NOTES` przyrostowe.
+
+**6. Bramka jest składnią, nie komentarzem**  
+Wszędzie, gdzie warunek decyduje o wykonaniu (commit po sprawdzeniu, etap na DONE po bramce wyjścia), warunek musi być egzekwowalny. Komentarz „zrób Y tylko gdy X" nie zatrzyma niczego.
+
+**7. Pomiar ma datę ważności**  
+„Dziś zero zmian" zmierzone o 18:00 bywa nieprawdą o 21:00. Dlatego znacznik pomiaru zawiera godzinę, a nie samą datę — i dlatego zamykanie dnia przed jego końcem jest pomiarem przedwczesnym.
+
 ---
 
 ## Typowy dzień pracy
@@ -272,7 +288,7 @@ To jest cały sens systemu. `/start` odczyta aktualny stan. Pisz komendy, rób p
 A: Nie. Skill cykl-start odpala się automatycznie gdy Claude wykryje, że zaczynasz sesję w projekcie (wrócenie po przerwie, "gdzie byliśmy"). Ale wpisanie /start jest zawsze bezpieczne.
 
 **Q: Co jeśli nie commituję przez kilka sesji?**  
-A: Nic złego. Commit to jednorazowe polecenie, które możesz skopiować z ostatniego /zamknij. Możesz je zbierać i wykonać zbiorczo.
+A: Nic się nie gubi — dokumenty są na dysku, a commit możesz zebrać zbiorczo z ostatniego `/zamknij`. Od 2.6.0 `/start` to jednak **zauważy i powie**: `STATE_PROBE` porówna żywy stan repo z tym, co zapisano w PROJECT_CONFIG, więc zaległe commity albo rozjazd z remote wyjdą na wejściu w sesję, a nie po tygodniu. Wcześniej praca niezacommitowana wyglądała identycznie jak zacommitowana, bo `/start` czytał wyłącznie pliki.
 
 **Q: Czy skille działają z GitHubem/Jirą/Notion?**  
 A: Te skille zarządzają wyłącznie lokalnymi dokumentami projektu (Markdown w repo). Integracja z zewnętrznymi narzędziami to osobny temat.

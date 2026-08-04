@@ -47,6 +47,8 @@ Statusy: `TODO` / `IN_PROGRESS` / `DONE` / `BLOCKED`.
 > Rozbity jest TYLKO bieżący etap (F6 — anti-overengineering). Następny etap rozbijasz przy
 > `/zamknij`, gdy bieżący przejdzie na DONE. Kolumna „Weryfikacja" to warunek flipu na DONE —
 > krok bez spełnionej weryfikacji nie jest zrobiony, niezależnie od wrażenia.
+> **Etap** przechodzi na DONE dopiero, gdy spełniona jest jego **Bramka wyjścia** z tabeli §2 i pokazano,
+> czym — komplet kroków DONE to warunek konieczny, nie wystarczający.
 
 **Etap {X}: {nazwa}**
 

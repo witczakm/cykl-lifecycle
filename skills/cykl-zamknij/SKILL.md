@@ -2,7 +2,7 @@
 name: cykl-zamknij
 description: Domknięcie sesji projektu wielosesyjnego — zbierz co się wydarzyło, zaktualizuj dokumenty stanu (w tym pozycję w roadmapie), złap lekcje i przygotuj commit. Użyj na końcu sesji gdy użytkownik pisze "/zamknij", "domknijmy sesję", "zamykamy wątek", "kończymy na dziś", "zapisz postęp i zakończ". Uruchom zanim użytkownik zamknie czat po realnej pracy. NIE używaj gdy "zamknij" dotyczy pliku, okna, nawiasu, połączenia, zasobu, issue lub PR w kodzie — skill domyka SESJĘ pracy, nie obiekt w programie.
 ---
-<!-- cykl-lifecycle v2.3.0 -->
+<!-- cykl-lifecycle v2.6.0 -->
 
 # /zamknij — domknięcie sesji
 
@@ -24,44 +24,74 @@ ani nie generuj commita dla niczego — to zaśmieca historię.
    - Które kroki roadmapy się domknęły (kryterium: kolumna "Weryfikacja" spełniona — nie "wydaje się gotowe").
    - Jakie wnioski/lekcje. Jaki jest następny ruch i dlaczego.
 
-2. **Zweryfikuj na żywym repo** (odczyt plików, nie git):
+2. **Zweryfikuj na żywym repo.** Odczyt plików + **wyłącznie te komendy gita**:
+   `git rev-parse --short HEAD` · `git rev-list --left-right --count <remote>...HEAD` ·
+   `git log --oneline -n` · `git show` · `git diff --stat HEAD`.
+   **ZAKAZANE:** `git status`, `git add --dry-run`, `git stash` — tworzą `.git/index.lock`,
+   którego mosty zdalne (Cowork/device bridge) nie potrafią usunąć, i blokują repo na kolejne dni.
    - Data z systemu do nagłówków — nie kopiuj z pamięci ani z plików.
    - Co realnie jest w HANDOFF/ROADMAP/CONFIG.
    - Test idempotencji: data ostatniego wpisu changelogu HANDOFF = dziś? To poprawka po wcześniejszym /zamknij: edytuj istniejący wpis, bump tylko patch wersji.
+   - **Pomiar ma datę ważności.** „Dziś zero zmian" zmierzone o 18:00 bywa nieprawdą o 21:00 — zamknięcie
+     dnia przed jego końcem to pomiar przedwczesny. Dlatego znacznik zawiera godzinę, nie samą datę.
 
 3. **Zaktualizuj dokumenty stanu.** Przy KAŻDEJ edycji ciała dokumentu zsynchronizuj nagłówek
-   (Wersja + Ostatnia aktualizacja) i dopisz wiersz changelogu w tym samym ruchu:
+   (Wersja + Ostatnia aktualizacja) i dopisz wiersz changelogu w tym samym ruchu.
+
+   **Pola dziennikowe vs stanowe.** Pole **dziennikowe** (changelog, nagłówek, bieżący sprint)
+   jest przyrostowe — dopisujesz warstwę, poprzednia zostaje. Pole **stanowe** ma JEDNĄ prawdziwą
+   wartość (np. stan repo, następna otwarta decyzja, publiczny URL, hash wdrożonego artefaktu) i musi
+   być **NADPISANE w całości po pomiarze**. Dopisanie nowej wartości obok starej tworzy pole z kilkoma
+   sprzecznymi stanami, w którym czytający bierze pierwszy — czyli najstarszy.
+   Jeśli w polu stanowym siedzi też trwała wiedza operacyjna (obejścia, ograniczenia narzędzi),
+   **rozszczep je na dwa pola**: stan (nadpisywany) i notatki (przyrostowe). Nie kasuj wiedzy.
+
    - docs/HANDOFF.md — nadpisz snapshot: data · gdzie jesteśmy (1 zdanie) · ostatnio zamknięte · następny ruch + dlaczego.
-   - docs/ROADMAP.md — zmień statusy domkniętych kroków (TYLKO status, nie usuwaj treści), przesuń Pozycję. Jeśli etap DONE: rozbij NASTĘPNY etap na kroki (dopiero teraz — F6) i ustaw Pozycję na jego pierwszy krok.
-   - PROJECT_CONFIG.md — Current Sprint (status, branch, next decision, ryzyka) + CURRENT_MILESTONE/CURRENT_SPRINT = nowa Pozycja. Bump nagłówka (Wersja + data; CONFIG nie ma changelogu).
+   - docs/ROADMAP.md — zmień statusy domkniętych kroków (TYLKO status, nie usuwaj treści), przesuń Pozycję. Etap flipuj na DONE **tylko przy spełnionej Bramce wyjścia** — pokaż, czym została spełniona; komplet kroków DONE to warunek konieczny, nie wystarczający. Dopiero wtedy rozbij NASTĘPNY etap na kroki (F6) i ustaw Pozycję na jego pierwszy krok.
+   - PROJECT_CONFIG.md — Current Sprint (status, stan repo, następna decyzja, ryzyka) + CURRENT_MILESTONE/CURRENT_SPRINT = nowa Pozycja. Bump nagłówka (Wersja + data; CONFIG nie ma changelogu). Pole stanowe repo wypełnij wynikiem `STATE_PROBE`, nie wartością przepisaną z pliku.
+     Każde pole stanowe kończ znacznikiem `[zmierzone RRRR-MM-DD HH:MM UTC]`. Pole opisujące ostatni
+     commit oznacz dodatkowo `stan PRZED commitem tej sesji` — jest o jeden commit do tyłu z definicji,
+     bo zapisujesz je wewnątrz commitu, który je utrwala.
+     Pole „następna decyzja" opatrz numerem **bieżącej** sesji. Jeśli decyzja przechodzi bez zmian,
+     napisz wprost „przeniesione bez zmian z sesji N" — nie zostawiaj starego numeru.
 
 4. **Lekcje** — zastosuj logikę /lekcja (projektowa) lub /lekcja-g (globalna).
    Globalnej nigdy nie zapisuj sam — pokaż i zapytaj.
 
 5. **Pokaż diff** — co zmieniłeś w których plikach.
 
-6. **Przygotuj komendę commit** z wbudowanym pre-flightem:
+6. **Przygotuj komendę commit z bramką MECHANICZNĄ.** Warunek egzekwuje składnia powłoki, nigdy komentarz —
+   człowiek wkleja cały blok naraz, więc `# nie commituj, jeśli…` nie zatrzyma niczego.
 
-   grep -n "Ostatnia aktualizacja" docs/HANDOFF.md docs/ROADMAP.md PROJECT_CONFIG.md
-   # data = dziś? jeśli nie — pliki nie zeszły na dysk, NIE commituj
-   git add docs/HANDOFF.md docs/ROADMAP.md PROJECT_CONFIG.md
-   git commit -m "..."
+   set -euo pipefail
+   grep -n "Ostatnia aktualizacja" docs/HANDOFF.md docs/ROADMAP.md PROJECT_CONFIG.md \
+     | grep -q "$(date +%Y-%m-%d)" \
+     && git add docs/HANDOFF.md docs/ROADMAP.md PROJECT_CONFIG.md \
+     && git commit -m "..."
 
-   Nie wykonuj git — podaj komendy; użytkownik wykonuje je w terminalu (Claude Code lub Codex).
+   `pipefail` jest obowiązkowe: `cmd | tail` zwraca kod wyjścia `tail`, nie `cmd`, więc bramka
+   przepuściłaby błąd. Pomiar stanu repo zrób w kroku 2 i wpisz do pola PRZED tym blokiem.
+   Nie wykonuj git mutującego — blok podaj; wykonuje go użytkownik w terminalu.
 
 ## Zasady
 
 - Fałszywy stan gorszy niż brak. Nie wiesz? [DO UZUPEŁNIENIA], nie zgaduj.
 - Krok DONE = weryfikacja spełniona. Nie flipuj statusu na wrażeniu.
-- Nie deklaruj "zapisane na dysku". Pre-flight grep sprawdza to tam, gdzie jest prawda.
-- Nie wykonuj git.
+- Nie deklaruj "zapisane na dysku". Bramka z kroku 6 sprawdza to tam, gdzie jest prawda.
+- Pole stanowe bez pomiaru = `[DO SPRAWDZENIA]`, **nigdy** stara wartość przepisana z pliku.
+- Nie dopisuj do pola stanowego. Jeśli ma już kilka wartości z różnych dat — to jest drift do naprawy
+  w tym samym ruchu, nie tło, na którym dokładasz kolejną.
+- Korekta twierdzenia musi dotknąć KAŻDEGO jego powtórzenia — te same fakty żyją w kilku dokumentach.
+  Po poprawce `grep` starego brzmienia = 0 wystąpień poza changelogiem.
+- Nie wykonuj git mutującego (add/commit/push/stash) — komendy pomiarowe z białej listy w kroku 2
+  wykonujesz sam.
 
 ## Output (co użytkownik widzi)
 
 1. Podsumowanie sesji (3-5 zdań) + nowa Pozycja (Etap X/N · krok Y/M).
 2. Lista zaktualizowanych dokumentów z nowymi wersjami.
 3. Lekcje zapisane / globalne do akceptacji.
-4. Blok komend: pre-flight grep + git add/commit.
+4. Blok komend: bramka mechaniczna + git add/commit.
 
 ## Powiązane
 

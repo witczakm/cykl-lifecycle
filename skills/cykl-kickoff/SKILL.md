@@ -2,7 +2,7 @@
 name: cykl-kickoff
 description: Załóż nowy projekt wielosesyjny od zera — stwórz strukturę folderów, skopiuj template'y dokumentów stanu, przeprowadź wywiad założeń (w tym etapy roadmapy) i zostaw projekt gotowy do pierwszej sesji. Użyj gdy użytkownik pisze "/kickoff", "/zaloz", "załóż projekt", "nowy projekt wielosesyjny", "zacznij projekt od zera", "rozpocznij nowy projekt który będzie trwał wiele sesji". To komenda jednorazowa na projekt — w istniejącym projekcie użyj /start. NIE używaj gdy "nowy projekt" oznacza scaffold frameworka (npx create-react-app, cargo new, django-admin startproject) bez intencji wielosesyjnego prowadzenia — wtedy po prostu pomóż w kodzie.
 ---
-<!-- cykl-lifecycle v2.3.0 -->
+<!-- cykl-lifecycle v2.6.0 -->
 
 # /kickoff — założenie nowego projektu
 
@@ -25,7 +25,10 @@ Nigdy nie nadpisuj istniejących dokumentów na ślepo.
 1. **Wywiad założeń** (maks 5-7 pytań w jednej turze, reszta → UNKNOWN z ownerem):
    - Wymagane do założenia: nazwa, codename/slug, katalog docelowy.
    - Wymagane przed pracą: cel projektu (1-2 zdania), lista etapów projektu (3-7 haseł "co po kolei" — zasila ROADMAP poziom 1), granice prywatności.
-   - Opcjonalne: repo git, licencja.
+   - Jeśli projekt ma repo: remote + **`STATE_PROBE`** — jedna komenda read-only mierząca stan poza dokumentami
+     (np. `git rev-parse --short HEAD; git rev-list --left-right --count <remote>...HEAD`). Bez niej `/start`
+     porównuje dokumenty wyłącznie ze sobą i nie wykryje, że są zgodnie nieaktualne.
+   - Opcjonalne: licencja.
    - Pole nieznane → UNKNOWN z ownerem i terminem. Wywiad-przesłuchanie zostanie porzucony; lepiej UNKNOWN niż elegancka halucynacja (F4).
 
 2. **Wybierz profil struktury** (patrz references/struktura-projektu.md):
@@ -44,7 +47,8 @@ Nigdy nie nadpisuj istniejących dokumentów na ślepo.
 
 5. **Pokaż użytkownikowi** strukturę + co trafiło do każdego pliku.
 
-6. **Przygotuj komendę commit** "initial scaffold" (explicit ścieżki, nie -A). Nie wykonuj git.
+6. **Przygotuj komendę commit** "initial scaffold" (explicit ścieżki, nie -A) — z bramką mechaniczną jak
+   w `/zamknij`: warunek przez `&&` i `set -euo pipefail`, nigdy przez komentarz. Nie wykonuj git.
 
 7. **Pierwszy /start** — zreferuj: "projekt założony, Pozycja: etap 1/N · krok 1/M, następny ruch = ...".
 

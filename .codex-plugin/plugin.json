@@ -1,6 +1,6 @@
 {
   "name": "cykl-lifecycle",
-  "version": "2.3.0",
+  "version": "2.6.0",
   "description": "Polskie skille do prowadzenia projektów wielosesyjnych — pamięć projektu żyje w plikach (HANDOFF/ROADMAP/LESSONS), /start na wejściu, /zamknij na wyjściu. Dual-compatible (Codex + Claude).",
   "author": {
     "name": "Michał Witczak"

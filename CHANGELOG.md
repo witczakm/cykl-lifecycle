@@ -4,6 +4,70 @@ All notable changes to cykl-lifecycle are documented here.
 
 ---
 
+## [2.6.0] — 2026-08-04
+
+Wydanie naprawia **mechanizmy**, nie opisy. Trzy defekty klasy „reguła istnieje, ale nic jej nie egzekwuje" oraz zestaw reguł pomiaru wyprowadzonych z analizy praktyki reconu w projekcie prowadzonym tym zestawem.
+
+### Fixed
+- **Bramka pre-flight była komentarzem, nie mechanizmem.** Blok w kroku 6 `/zamknij` (i analogicznie w `/kickoff`) miał postać `grep …` / `# jeśli nie — NIE commituj` / `git add` / `git commit`. Człowiek wkleja cały blok naraz, więc commit wykonywał się niezależnie od wyniku grepa. Warunek egzekwuje teraz **składnia powłoki** (`set -euo pipefail` + `&&`). Precedens z projektu prowadzonego tym zestawem: push wystrzelił mimo trzech nieprzechodzących testów.
+- **`pipefail` obowiązkowe w bramkach** — `cmd | tail` zwraca kod wyjścia `tail`, nie `cmd`, więc bramka bez `pipefail` przepuszcza błąd.
+- **`skills/cykl-zamknij/agents/openai.yaml`** deklarował „nie wykonuje git" — nieprawda od 2.5.0, która dopuściła białą listę komend pomiarowych. Szóste miejsce, w którym żył ten kontrakt.
+- **Nazwa „pre-flight grep" w Zasadach `/zamknij`** wskazywała na blok, który przestał istnieć pod tą nazwą.
+
+### Added
+- **`STATE_PROBE` — pomiar zewnętrzny na wejściu w sesję.** Drift-check w `/start` porównywał dokumenty **wyłącznie ze sobą nawzajem**: nagłówek z changelogiem, CONFIG z HANDOFF, Pozycję ze statusami. Trzy dokumenty potrafią zgodnie powtarzać tę samą nieprawdę — spójność wewnętrzna to nie prawdziwość. `PROJECT_CONFIG` deklaruje teraz jedną komendę read-only mierzącą stan poza dokumentami; `/start` wykonuje ją i porównuje z polem stanowym. Maks. 3 próby, brak odpowiedzi = `[DO SPRAWDZENIA]`, nigdy blokada wejścia w sesję. Skill pozostaje generyczny — osprzęt pomiarowy wnosi projekt.
+- `/kickoff` pyta o remote i `STATE_PROBE`, jeśli projekt ma repo. Wcześniej repo git było „opcjonalne", a krok 6 i tak zakładał, że istnieje.
+- `/migawka` wykonuje sondę, gdy migawka dotyka pola stanowego — zamiast przepisywać starą wartość.
+- **Bramka wyjścia etapu jest egzekwowana.** Kolumna „Bramka wyjścia" istniała w szablonie ROADMAP od 2.0, ale żaden skill jej nie sprawdzał — flip etapu na DONE opierał się na kompletności kroków. `/zamknij` i `/roadmap` wymagają teraz pokazania, czym bramka została spełniona; komplet kroków DONE to warunek konieczny, nie wystarczający.
+- **Reguły pomiaru** (z analizy 15 udokumentowanych trybów, w których pomiar kłamie):
+  - `/start`: **pomiar przeczy dokumentowi → najpierw sprawdź, czy mierzysz właściwy obiekt** — ten, którego używa bieżący krok, nie ten o podobnej nazwie. Najczęstszy tryb porażki w materiale źródłowym.
+  - `/start`: **ucięty odczyt nie jest dowodem nieobecności** — listing obcięty limitem mówi „nie widzę", nie „nie ma".
+  - `/zamknij`: **pomiar ma datę ważności** — „dziś zero zmian" zmierzone o 18:00 bywa nieprawdą o 21:00; zamknięcie dnia przed jego końcem to pomiar przedwczesny. Stąd godzina w znaczniku `[zmierzone …]`, nie sama data.
+  - `/zamknij`: **korekta twierdzenia musi dotknąć KAŻDEGO jego powtórzenia** — te same fakty żyją w kilku dokumentach; po poprawce `grep` starego brzmienia = 0 poza changelogiem.
+  - `/lekcja`: precedens w „Dlaczego" podawany liczbą z pomiaru, nie przymiotnikiem.
+
+### Packaging
+- **`build-plugin.sh`** — buduje `cykl-lifecycle.plugin` ze źródeł i **weryfikuje wynik**: integralność archiwum, zgodność `skills/` w paczce z repozytorium oraz jednolitość markera wersji. Kończy się błędem, gdy cokolwiek się nie zgadza. Powód: paczka jest binarnym duplikatem `skills/`, a zapomniana przebudowa daje wydanie, w którym zmiana nie dociera do nikogo instalującego przez Cowork — zdarzyło się raz, paczka wiozła skille o dwie wersje starsze niż repo.
+- **`packaging/plugin-README.md`** — README widoczne po instalacji z paczki jest teraz **wersjonowane w repo**. Wcześniej istniało wyłącznie wewnątrz archiwum, więc nikt go nie utrzymywał: nie miało numeru wersji ani informacji o zmianach. Teraz zawiera jedno i drugie.
+
+### Documentation
+- **Instrukcje aktualizacji per środowisko** — `docs/INSTALL-codex.md` **nie miał sekcji aktualizacji w ogóle**, a `docs/INSTALL-claude.md` miał dwie linijki bez restartu agenta i bez ścieżki dla Cowork. Obie sekcje opisują teraz: sprawdzenie zainstalowanej wersji markerem (`grep -h "cykl-lifecycle v" …/cykl-*/SKILL.md | sort -u`), wykrycie wymieszanych wersji, aktualizację jedną komendą i ręczną, wariant pluginowy, wymóg restartu agenta oraz jawne stwierdzenie, że wydanie nie łamie kompatybilności.
+- `README` — nowa sekcja „Masz już starszą wersję?" z komendą sprawdzającą dla obu środowisk.
+- **`docs/ARCHITEKTURA-DECYZJE.md`** — nowy dokument: dziesięć decyzji projektowych (D1–D10), każda z precedensem, który ją wymusił, i z warunkiem, który by ją odwrócił. Osobno od przewodnika, bo odpowiada na „dlaczego", nie na „jak używać".
+- `README` — sekcja „Co nowego w 2.6.0"; opis dwóch typów pól i `STATE_PROBE`; ostrzeżenie, że `cykl-lifecycle.plugin` jest binarnym duplikatem `skills/` i wymaga przebudowy przy każdej zmianie; struktura repozytorium uzupełniona o `install.sh`, `.claude-plugin/` i paczkę.
+- `README` — **poprawiona nieprawda**: „skille nigdy nie wykonują git" nie obowiązuje od 2.5.0, która dopuściła białą listę komend pomiarowych.
+- `docs/PRZEWODNIK-KOMEND.md` — przykładowy blok commita w `/zamknij` **pokazywał antywzorzec** naprawiony w tym wydaniu (warunek jako komentarz); zastąpiony bramką mechaniczną z wyjaśnieniem. Nowe reguły 5–7 (pola dziennikowe vs stanowe, bramka jako składnia, data ważności pomiaru). Zaktualizowana odpowiedź na „co jeśli nie commituję przez kilka sesji" — od 2.6.0 `/start` to zauważy.
+- `CONTRIBUTING.md` — bramki przed PR (wersja w pięciu miejscach, kontrakt gita w ośmiu, frontmatter nietykalny, paczka identyczna z `skills/`) oraz wymóg mierzenia przyrostu linii: skille mają zostać lekkie.
+
+### Changed
+- **`PROJECT_CONFIG.template`** — nowa sekcja `STATE_PROBE` oraz rozszczepienie worka na stan repo na dwa pola: `REPO_STATE` (stanowe, nadpisywane po pomiarze, ze znacznikiem) i `REPO_NOTES` (przyrostowe, trwała wiedza operacyjna). `CURRENT_SPRINT_BRANCH` zostaje, ale wyłącznie na nazwę brancha. W projekcie źródłowym jedno pole zlepiające obie role spuchło przez sześć sesji do 1369 znaków i zawierało trzy sprzeczne stany z trzech dat.
+- **`HANDOFF.template`** — „Następny ruch" wymaga teraz wykonawcy, modelu i decyzji TEN SAM / NOWY wątek, oraz musi być wykonywalny bez otwierania innych plików (zero placeholderów). Wcześniej mówił CO i DLACZEGO, nigdy KTO i CZYM.
+- **`ROADMAP.template`** — nota przy rozbiciu etapu opisuje warunek flipu etapu, nie tylko kroku.
+
+---
+
+## [2.5.0] — 2026-08-04
+
+### Added
+- **Rozróżnienie pól dziennikowych i stanowych w dokumentach stanu.** Pole dziennikowe (changelog, nagłówek, bieżący sprint) jest przyrostowe; pole stanowe (np. stan repo, następna otwarta decyzja, publiczny URL, hash wdrożonego artefaktu) ma jedną prawdziwą wartość i musi być NADPISANE po pomiarze. Diagnoza: w projekcie prowadzonym tym zestawem pole stanowe urosło przez 6 sesji do 1369 znaków i zawierało trzy sprzeczne stany z trzech dat — czytający brał pierwszy, czyli najstarszy.
+- `cykl-zamknij` krok 3: akapit „Pola dziennikowe vs stanowe" + reguła rozszczepienia pola stanowego na stan (nadpisywany) i notatki (przyrostowe), gdy siedzi w nim trwała wiedza operacyjna.
+- `cykl-zamknij` krok 3: znacznik `[zmierzone RRRR-MM-DD HH:MM UTC]` przy każdym polu stanowym; pole opisujące ostatni commit dodatkowo oznaczane jako „stan PRZED commitem tej sesji" (jest o jeden commit do tyłu z definicji, bo zapisywane jest wewnątrz commitu, który je utrwala); pole „następna decyzja" opatrywane numerem BIEŻĄCEJ sesji.
+- `cykl-zamknij` krok 6: pre-flight mierzy teraz stan repo (`git rev-parse --short HEAD`, `git rev-list --left-right --count`), a nie tylko `grep "Ostatnia aktualizacja"` — czyli jedyne pole, które nie mogło być nieaktualne, bo właśnie zostało wpisane.
+- `cykl-zamknij` Zasady: pole stanowe bez pomiaru = `[DO SPRAWDZENIA]`, nigdy stara wartość przepisana z pliku; kilka wartości z różnych dat w jednym polu = drift do naprawy w tym samym ruchu.
+- `cykl-start` krok 2 (drift-check): czytaj CAŁE pole stanowe, nie jego początek (pola >1000 znaków — obcięcie pokazuje najstarszą wartość jako bieżącą); kilka stanów w jednym polu = drift, nawet jeśli najnowsza wartość w nim jest.
+- `.claude-plugin/plugin.json` — manifest Claude w repozytorium. Wcześniej istniał wyłącznie wewnątrz artefaktu `cykl-lifecycle.plugin`, przez co repo nie było poprawnym rootem pluginu Claude.
+
+### Changed
+- `cykl-zamknij` krok 2: „odczyt plików, nie git" → biała lista komend read-only (`git rev-parse --short HEAD`, `git rev-list --left-right --count`, `git log --oneline -n`, `git show`, `git diff --stat HEAD`). Jawny ZAKAZ `git status`, `git add --dry-run`, `git stash` — tworzą `.git/index.lock`, którego mosty zdalne (Cowork / device bridge) nie potrafią usunąć, i blokują repo na kolejne dni.
+- `cykl-zamknij` krok 6 i Zasady: „Nie wykonuj git" doprecyzowane na „nie wykonuj git mutującego (add/commit/push/stash)" — komendy pomiarowe z białej listy model wykonuje sam. Bez tego krok 2 i Zasady dawały sprzeczną instrukcję.
+- `cykl-migawka` krok 2: reguła NADPISZ rozciągnięta z sekcji Snapshot w HANDOFF na pola stanowe w PROJECT_CONFIG. Historia idzie do changelogu, nie do wnętrza pola.
+
+### Fixed
+- **Drift wersji w samym pluginie — ta sama klasa błędu, którą to wydanie naprawia.** Repozytorium deklarowało cztery różne wersje naraz: `.codex-plugin/plugin.json` 2.3.0, markery w 7 × `SKILL.md` 2.3.0, badge README 2.4.0, `docs/PRZEWODNIK-KOMEND.md` 2.2.0, a manifest wewnątrz `cykl-lifecycle.plugin` 2.4.0. Wszystko zsynchronizowane do 2.5.0.
+- `cykl-lifecycle.plugin` przebudowany z bieżącej treści skilli. Artefakt wiózł bajt-w-bajt kopie `SKILL.md` sprzed zmiany, więc instalacja jednym plikiem dostarczała starą wersję niezależnie od stanu repozytorium.
+
+---
+
 ## [2.4.0] — 2026-06-17
 
 ### Added
