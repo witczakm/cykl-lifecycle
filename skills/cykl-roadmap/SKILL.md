@@ -2,7 +2,7 @@
 name: cykl-roadmap
 description: Pokaż pozycję i sekwencję prac z ROADMAP projektu — na którym etapie projektu jesteśmy i w którym kroku tego etapu — opcjonalnie zaktualizuj na wyraźne polecenie. Użyj gdy użytkownik pisze "/roadmap", "co po kolei w projekcie", "pokaż plan projektu", "pokaż postęp", "na którym etapie jesteśmy", "jaka jest kolejność prac". Domyślnie tylko pokazuje (read-only). NIE używaj gdy mowa o roadmapie produktu klienta, firmy zewnętrznej lub ogólnej strategii biznesowej — skill czyta wyłącznie docs/ROADMAP.md bieżącego projektu lifecycle. NIE używaj gdy pytanie dotyczy kolejności kroków w konkretnym bieżącym zadaniu — ten skill czyta docs/ROADMAP.md projektu lifecycle, nie odpowiada na ogólne pytania "co robić dalej".
 ---
-<!-- cykl-lifecycle v2.6.0 -->
+<!-- cykl-lifecycle v2.7.0 -->
 
 # /roadmap — pozycja i sekwencja prac
 

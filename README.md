@@ -6,7 +6,7 @@
 >
 > 🇬🇧 English version: **[witczakm/cycle-lifecycle](https://github.com/witczakm/cycle-lifecycle)**
 
-[![Version](https://img.shields.io/badge/version-2.6.0-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-2.7.0-blue)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Platformy](https://img.shields.io/badge/platformy-Claude%20Code%20%C2%B7%20Codex%20%C2%B7%20Cowork-orange)](#instalacja--wybierz-narz%C4%99dzie)
 [![Format](https://img.shields.io/badge/format-Agent%20Skills-blueviolet)](https://agentskills.io)
@@ -77,9 +77,20 @@ Komendy (`/start`, `/zamknij`…) wpisujesz po prostu w rozmowie z agentem.
 
 ---
 
-## Co nowego w 2.6.0
+## Co nowego w 2.7.0
 
-Dwa wydania z sierpnia 2026 (2.5.0 i 2.6.0) naprawiają **mechanizmy**, nie opisy. Wspólny mianownik: reguła istniała, ale nic jej nie egzekwowało.
+Wydanie atakuje **przyczynę powracającego driftu**, nie kolejny objaw. Wcześniejsza naprawa (2.5.0) usunęła jeden mechanizm — drift wrócił, bo to była przyczyna wtórna.
+
+| Zmiana | Dlaczego |
+|---|---|
+| **Próg rozmiaru z rotacją** — `/zamknij` mierzy `wc -c`, powyżej ~40 kB archiwizuje historyczne wpisy | w realnym projekcie dokumenty stanu urosły do **316 kB** przy szablonie ważącym 2 kB. Domykający nie przegląda takiego pliku w całości, więc aktualizuje miejsca, które pamięta — a ich liczba rośnie z każdą sesją. To źródło driftu, nie objaw |
+| **Bramka spójności nagłówek ↔ changelog** przy zapisie | nagłówek i treść to dwa osobne ruchy edycyjne; kto dopisał pozycję na dole pliku, nie wrócił na górę. Dotąd wykrywał to dopiero `/start`, po fakcie |
+| **Fakt ma JEDNO miejsce** — kopia zastąpiona odwołaniem | pilnowanie kopii kosztuje coraz więcej z każdą kopią i sesją; likwidacja zdejmuje problem zamiast go administrować |
+| **Pole mierzone sondą zawiera odwołanie, nie wartość** | wartość zapisana wewnątrz commitu opisuje stan sprzed samej siebie — jest o jeden commit do tyłu z definicji. Odwołanie mierzy się przy odczycie |
+
+### Wcześniej: 2.5.0 i 2.6.0
+
+Naprawiały **mechanizmy**, nie opisy. Wspólny mianownik: reguła istniała, ale nic jej nie egzekwowało.
 
 | Zmiana | Dlaczego |
 |---|---|

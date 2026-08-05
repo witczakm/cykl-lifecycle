@@ -2,7 +2,7 @@
 name: cykl-zamknij
 description: Domknięcie sesji projektu wielosesyjnego — zbierz co się wydarzyło, zaktualizuj dokumenty stanu (w tym pozycję w roadmapie), złap lekcje i przygotuj commit. Użyj na końcu sesji gdy użytkownik pisze "/zamknij", "domknijmy sesję", "zamykamy wątek", "kończymy na dziś", "zapisz postęp i zakończ". Uruchom zanim użytkownik zamknie czat po realnej pracy. NIE używaj gdy "zamknij" dotyczy pliku, okna, nawiasu, połączenia, zasobu, issue lub PR w kodzie — skill domyka SESJĘ pracy, nie obiekt w programie.
 ---
-<!-- cykl-lifecycle v2.6.0 -->
+<!-- cykl-lifecycle v2.7.0 -->
 
 # /zamknij — domknięcie sesji
 
@@ -38,22 +38,26 @@ ani nie generuj commita dla niczego — to zaśmieca historię.
 3. **Zaktualizuj dokumenty stanu.** Przy KAŻDEJ edycji ciała dokumentu zsynchronizuj nagłówek
    (Wersja + Ostatnia aktualizacja) i dopisz wiersz changelogu w tym samym ruchu.
 
-   **Pola dziennikowe vs stanowe.** Pole **dziennikowe** (changelog, nagłówek, bieżący sprint)
-   jest przyrostowe — dopisujesz warstwę, poprzednia zostaje. Pole **stanowe** ma JEDNĄ prawdziwą
-   wartość (np. stan repo, następna otwarta decyzja, publiczny URL, hash wdrożonego artefaktu) i musi
-   być **NADPISANE w całości po pomiarze**. Dopisanie nowej wartości obok starej tworzy pole z kilkoma
-   sprzecznymi stanami, w którym czytający bierze pierwszy — czyli najstarszy.
-   Jeśli w polu stanowym siedzi też trwała wiedza operacyjna (obejścia, ograniczenia narzędzi),
-   **rozszczep je na dwa pola**: stan (nadpisywany) i notatki (przyrostowe). Nie kasuj wiedzy.
+   **Pola dziennikowe vs stanowe.** Dziennikowe (changelog, nagłówek, sprint) są przyrostowe. Stanowe
+   (stan repo, następna decyzja, URL, hash artefaktu) mają JEDNĄ wartość — **NADPISZ po pomiarze**;
+   dopisanie obok starej daje pole ze sprzecznymi stanami, gdzie czytający bierze pierwszy = najstarszy.
+   Siedzi tam też trwała wiedza (obejścia, ograniczenia)? **Rozszczep**: stan + notatki.
+
+   **Bramka spójności — po KAŻDEJ edycji, zanim pójdziesz dalej.** Data i wersja w nagłówku = te
+   z ostatniego wiersza changelogu. Rozjazd = STOP, popraw teraz. Nagłówek i treść to dwa osobne
+   ruchy edycyjne; sprawdzenie kosztuje dwa odczyty, więc rób je przy zapisie, nie zostawiaj `/start`.
+
+   **Próg rozmiaru — zmierz `wc -c`.** Powyżej ~40 kB przenieś historyczne wpisy do
+   `docs/archive/<nazwa>-RRRR-Qn.md`, zostaw ostatnie 5 + odsyłacz. Dokumentu, którego nie
+   przeglądasz w całości, nie da się aktualizować kompletnie — to źródło driftu, nie objaw.
 
    - docs/HANDOFF.md — nadpisz snapshot: data · gdzie jesteśmy (1 zdanie) · ostatnio zamknięte · następny ruch + dlaczego.
    - docs/ROADMAP.md — zmień statusy domkniętych kroków (TYLKO status, nie usuwaj treści), przesuń Pozycję. Etap flipuj na DONE **tylko przy spełnionej Bramce wyjścia** — pokaż, czym została spełniona; komplet kroków DONE to warunek konieczny, nie wystarczający. Dopiero wtedy rozbij NASTĘPNY etap na kroki (F6) i ustaw Pozycję na jego pierwszy krok.
-   - PROJECT_CONFIG.md — Current Sprint (status, stan repo, następna decyzja, ryzyka) + CURRENT_MILESTONE/CURRENT_SPRINT = nowa Pozycja. Bump nagłówka (Wersja + data; CONFIG nie ma changelogu). Pole stanowe repo wypełnij wynikiem `STATE_PROBE`, nie wartością przepisaną z pliku.
-     Każde pole stanowe kończ znacznikiem `[zmierzone RRRR-MM-DD HH:MM UTC]`. Pole opisujące ostatni
-     commit oznacz dodatkowo `stan PRZED commitem tej sesji` — jest o jeden commit do tyłu z definicji,
-     bo zapisujesz je wewnątrz commitu, który je utrwala.
-     Pole „następna decyzja" opatrz numerem **bieżącej** sesji. Jeśli decyzja przechodzi bez zmian,
-     napisz wprost „przeniesione bez zmian z sesji N" — nie zostawiaj starego numeru.
+   - PROJECT_CONFIG.md — Current Sprint (status, następna decyzja, ryzyka) + CURRENT_MILESTONE/CURRENT_SPRINT = nowa Pozycja. Bump nagłówka (Wersja + data; CONFIG nie ma changelogu).
+     Pole stanowe kończ znacznikiem `[zmierzone RRRR-MM-DD HH:MM UTC]`. Pole mierzone przez `STATE_PROBE`
+     zastąp **odwołaniem** (`<mierzone przez STATE_PROBE>`), nie kopią: wartość zapisana wewnątrz commitu
+     opisuje stan sprzed samej siebie, odwołanie mierzy się przy odczycie.
+     „Następna decyzja" = numer **bieżącej** sesji; bez zmian → „przeniesione bez zmian z sesji N".
 
 4. **Lekcje** — zastosuj logikę /lekcja (projektowa) lub /lekcja-g (globalna).
    Globalnej nigdy nie zapisuj sam — pokaż i zapytaj.
@@ -81,7 +85,9 @@ ani nie generuj commita dla niczego — to zaśmieca historię.
 - Pole stanowe bez pomiaru = `[DO SPRAWDZENIA]`, **nigdy** stara wartość przepisana z pliku.
 - Nie dopisuj do pola stanowego. Jeśli ma już kilka wartości z różnych dat — to jest drift do naprawy
   w tym samym ruchu, nie tło, na którym dokładasz kolejną.
-- Korekta twierdzenia musi dotknąć KAŻDEGO jego powtórzenia — te same fakty żyją w kilku dokumentach.
+- **Fakt ma JEDNO miejsce.** Ta sama wartość w dwóch dokumentach = drugi ma zawierać odwołanie, nie kopię.
+  Kopii nie da się pilnować tanio — koszt rośnie z każdą kopią i z każdą sesją.
+- Korekta twierdzenia musi dotknąć KAŻDEGO jego powtórzenia — dopóki kopie istnieją.
   Po poprawce `grep` starego brzmienia = 0 wystąpień poza changelogiem.
 - Nie wykonuj git mutującego (add/commit/push/stash) — komendy pomiarowe z białej listy w kroku 2
   wykonujesz sam.

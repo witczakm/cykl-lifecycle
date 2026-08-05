@@ -48,7 +48,7 @@ Potem w Codeksie podłącz plugin: wpisz `$plugin-creator` i poproś o podłącz
 
 ```bash
 grep -h "cykl-lifecycle v" ~/.agents/skills/cykl-*/SKILL.md | sort -u
-# oczekiwane po aktualizacji: <!-- cykl-lifecycle v2.6.0 -->
+# oczekiwane po aktualizacji: <!-- cykl-lifecycle v2.7.0 -->
 ```
 
 Marker siedzi w każdym `SKILL.md` tuż pod frontmatterem. Jeśli komenda zwróci **więcej niż jedną linię**, masz wymieszane wersje — usuń wszystko i wgraj od nowa.

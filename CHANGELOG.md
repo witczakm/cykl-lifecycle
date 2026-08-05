@@ -4,6 +4,26 @@ All notable changes to cykl-lifecycle are documented here.
 
 ---
 
+## [2.7.0] — 2026-08-05
+
+Wydanie atakuje **przyczynę powracającego driftu**, nie kolejny jego objaw. 2.5.0 naprawiła jeden mechanizm (pola dopisywane zamiast nadpisywanych) — drift wrócił, bo to była przyczyna wtórna. Diagnoza na żywym projekcie po czterech kolejnych sesjach wskazała trzy odrębne źródła i jeden czynnik, który je wszystkie mnoży.
+
+### Added
+- **Próg rozmiaru dokumentów stanu z rotacją.** `/zamknij` mierzy `wc -c` każdego dokumentu; powyżej ~40 kB przenosi historyczne wpisy do `docs/archive/<nazwa>-RRRR-Qn.md` i zostawia ostatnie 5 + odsyłacz. `/start` zgłasza przekroczenie progu jako dług.
+  **Powód:** w projekcie prowadzonym tym zestawem dokumenty stanu urosły do 153 / 179 / 294 / **316 kB** — przy szablonie HANDOFF ważącym ~2 kB. Domykający sesję fizycznie nie przegląda takiego pliku w całości, więc aktualizuje miejsca, które pamięta, a ich liczba rośnie z każdą sesją. Pozostałe przyczyny driftu są konsekwencjami rozmiaru: duplikat faktu boli dopiero wtedy, gdy nie widać wszystkich kopii naraz. Szablon od zawsze mówił „**cienki** snapshot" — bez liczby było to życzenie, nie regułą.
+- **Bramka spójności nagłówek ↔ changelog** w `/zamknij` (krok 3) i `/migawka` (krok 3). Po każdej edycji: data i wersja w nagłówku muszą równać się tym z ostatniego wiersza changelogu; rozjazd zatrzymuje pracę.
+  **Powód:** nagłówek i treść to dwa osobne ruchy edycyjne i drugi bywa pominięty — kto dopisał pozycję na dole pliku, nie wrócił na górę. Do 2.6.0 wykrywał to dopiero `/start`, czyli po fakcie. Sprawdzenie kosztuje dwa odczyty i nie zależy od rozmiaru pliku, więc należy do momentu zapisu.
+- **Zasada „fakt ma JEDNO miejsce"** w Zasadach `/zamknij` oraz w `PROJECT_CONFIG.template`: wartość żyjąca w innym dokumencie wpisywana jest jako odwołanie, nigdy jako kopia.
+  **Powód:** dotychczasowa reguła „korekta dotyka każdego powtórzenia" pilnuje kopii — koszt rośnie liniowo z ich liczbą i z każdą sesją. Likwidacja kopii zdejmuje problem zamiast go administrować, i jest jedyną wersją weryfikowalną tanio: nie ma czego porównywać.
+
+### Changed
+- **Pole stanowe mierzone sondą zawiera odwołanie, nie wartość.** `REPO_STATE` w szablonie to teraz `<mierzone przez STATE_PROBE>`. Znika samoodniesienie: wartość zapisywana wewnątrz commitu opisuje stan sprzed samej siebie i **zawsze** jest o jeden commit do tyłu. 2.6.0 to oznaczała (`stan PRZED commitem tej sesji`); 2.7.0 usuwa źródło, przenosząc pomiar z czasu zapisu na czas odczytu.
+- `CURRENT_MILESTONE` w szablonie to sam identyfikator etapu — bez wersji planu i budżetu, które żyją we własnych dokumentach.
+- `HANDOFF.template` — próg 40 kB wpisany wprost do noty „po co ten plik".
+- **`cykl-zamknij` skondensowany**, żeby zmieścić trzy nowe reguły bez przekroczenia progu lekkości: 100 → 106 linii przy limicie 110. Uzasadnienia przeniesione do `docs/ARCHITEKTURA-DECYZJE.md`, w skillu zostały same reguły. Ten sam mechanizm, który wydanie wprowadza dla dokumentów stanu, zastosowany do samego skilla.
+
+---
+
 ## [2.6.0] — 2026-08-04
 
 Wydanie naprawia **mechanizmy**, nie opisy. Trzy defekty klasy „reguła istnieje, ale nic jej nie egzekwuje" oraz zestaw reguł pomiaru wyprowadzonych z analizy praktyki reconu w projekcie prowadzonym tym zestawem.

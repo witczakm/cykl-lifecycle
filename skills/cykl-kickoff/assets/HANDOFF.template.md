@@ -9,6 +9,10 @@
 > **Po co ten plik:** żeby nowy wątek wszedł w pracę bez gubienia kontekstu. To **cienki** snapshot —
 > NIE powiela live-state z `PROJECT_CONFIG.md` (commity, testy, daty). Dodaje to, czego config nie ma:
 > „dlaczego tu jesteśmy" i „jaki jest następny ruch".
+>
+> **Próg: ~40 kB.** Powyżej — `/zamknij` przenosi historyczne wpisy do `docs/archive/HANDOFF-RRRR-Qn.md`
+> i zostawia tu ostatnie 5 + odsyłacz. „Cienki" bez liczby jest życzeniem, nie regułą: dokumentu,
+> którego domykający nie przegląda w całości, nie da się aktualizować kompletnie.
 
 ---
 

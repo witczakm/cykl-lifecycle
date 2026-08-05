@@ -111,3 +111,37 @@ Rozpoznanie, które mierzy źle, jest **groźniejsze niż jego brak** — produk
 **Co realnie bolało i jak zostało rozwiązane bez pushowania.** Objaw brzmiał „praca niezacommitowana od kilku dni, nikt tego nie zauważył". Przyczyna nie leżała w braku automatyzacji, tylko w tym, że `/start` czytał wyłącznie pliki — a praca niezacommitowana wygląda w plikach identycznie jak zacommitowana. `STATE_PROBE` z D7 zamyka to bez jednego zapisu do repozytorium.
 
 **Co odwróci tę decyzję.** Repozytorium prywatne, jednoosobowe, bez CI — wtedy koszt złego pusha spada na tyle, że domyślne włączenie staje się rozsądne.
+
+---
+
+## D11 — Rozmiar dokumentu stanu jest przyczyną driftu, nie jego skutkiem
+
+**Decyzja.** Dokumenty stanu mają próg (~40 kB dla HANDOFF). Po przekroczeniu `/zamknij` przenosi historyczne wpisy do `docs/archive/<nazwa>-RRRR-Qn.md` i zostawia ostatnie 5 + odsyłacz. `/start` zgłasza przekroczenie jako dług.
+
+**Precedens.** W projekcie prowadzonym tym zestawem dokumenty stanu urosły do **153 / 179 / 294 / 316 kB**. Szablon, z którego powstał ten ostatni, waży ~2 kB i od pierwszej wersji mówi: *„To **cienki** snapshot"*. Sto sześćdziesiąt razy więcej, i żaden mechanizm tego nie zauważył.
+
+**Dlaczego to przyczyna, a nie czynnik towarzyszący.** Diagnoza po czterech kolejnych sesjach z tym samym typem driftu wskazała trzy odrębne mechanizmy: samoodniesienie pola, duplikat faktu w trzech plikach, rozjazd nagłówka z treścią. Wszystkie trzy są konsekwencjami rozmiaru:
+
+- duplikat faktu boli dopiero wtedy, gdy nie widać wszystkich kopii naraz;
+- rozjazd nagłówka z treścią powstaje, bo dopisujący na dole pliku nie wraca na górę;
+- domykający *„aktualizuje te miejsca, o których pamięta — a liczba miejsc rośnie z każdą sesją"*.
+
+Przy pliku, który da się przejrzeć w całości, żaden z tych trzech nie ma jak się wydarzyć.
+
+**Konsekwencja dla kolejności napraw.** Likwidacja kopii w pliku, który dalej rośnie, kupuje jedną sesję spokoju. Próg rozmiaru idzie pierwszy.
+
+**Co odwróci tę decyzję.** Gdyby dokumenty stanu pełniły świadomie rolę archiwum audytowego i cięcie oznaczało utratę śladu. Sprawdzalne jednym pytaniem: czy ktokolwiek kiedykolwiek sięgnął do HANDOFF starszego niż pięć sesji.
+
+---
+
+## D12 — Fakt ma jedno miejsce; reszta odwołuje się do niego
+
+**Decyzja.** Wartość żyjąca w jednym dokumencie wpisywana jest w innych jako **odwołanie**, nigdy jako kopia. Dotyczy też pól mierzonych przez `STATE_PROBE`: `REPO_STATE=<mierzone przez STATE_PROBE>` zamiast przepisanego hasha.
+
+**Precedens.** `CURRENT_MILESTONE` niósł numer wersji planu, który żył równolegle w dokumencie planu. Sesja zaktualizowała plan i bieżący sprint, przeoczyła trzecie miejsce. Osobno: pole opisujące ostatni commit **zawsze** było o jeden do tyłu, bo zapisuje je ten commit, który je utrwala.
+
+**Dlaczego to zastępuje wcześniejszą regułę, a nie ją uzupełnia.** Reguła z 2.6.0 — *„korekta twierdzenia musi dotknąć każdego jego powtórzenia"* — pilnuje kopii. Koszt pilnowania rośnie z liczbą kopii i z każdą sesją, a weryfikacja wymaga przejrzenia całości, czyli tego, co przy dużym pliku jest niewykonalne (D11). Likwidacja kopii jest jedyną wersją, którą da się sprawdzić tanio: nie ma czego porównywać. Reguła z 2.6.0 zostaje, ale wyłącznie jako obsługa okresu przejściowego — dopóki kopie jeszcze istnieją.
+
+**Wariant brzegowy.** Odwołanie nie może być pustką. Gdy `STATE_PROBE` jest niewykonalne (Cowork bez mostu, Claude.ai), czytający musi wiedzieć, że wartość istnieje gdzie indziej — a nie że jej nie ma. Stąd jawny zapis `<mierzone przez STATE_PROBE>` zamiast usunięcia pola.
+
+**Efekt uboczny, który jest głównym zyskiem.** Samoodniesienie znika bez potrzeby oznaczania go: pomiar przenosi się z czasu zapisu na czas odczytu.

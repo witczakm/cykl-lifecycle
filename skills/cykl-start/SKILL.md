@@ -2,7 +2,7 @@
 name: cykl-start
 description: Wejście w sesję projektu wielosesyjnego — wczytaj stan z dokumentów i zreferuj "gdzie jesteśmy + następny ruch". Użyj na początku KAŻDEJ sesji projektu, gdy użytkownik pisze "/start", "zacznijmy sesję", "gdzie jesteśmy w projekcie", "co było ostatnio w projekcie", "wróćmy do projektu", albo wraca do pracy po przerwie. Uruchom też zanim zaczniesz jakąkolwiek pracę nad projektem wielosesyjnym, nawet bez prośby. NIE używaj, gdy "start/zacznij" dotyczy uruchamiania programu, serwera, kontenera, skryptu (npm start, docker start, cargo run) albo pisania kodu — to praca techniczna, nie wejście w sesję projektu.
 ---
-<!-- cykl-lifecycle v2.6.0 -->
+<!-- cykl-lifecycle v2.7.0 -->
 
 # /start — wejście w sesję
 
@@ -38,6 +38,8 @@ pamięci, a dokumenty bywają rozjechane z rzeczywistością (drift).
      jedna data albo więcej niż jedno „Stan (…)" w tej samej linii. Zgłoś to jako drift do naprawy przez
      `/migawka`, wskazując, która wartość jest bieżąca.
    - **Ucięty odczyt nie jest dowodem nieobecności** — listing obcięty limitem albo `head` mówi „nie widzę", nie „nie ma".
+   - **Rozmiar dokumentów.** Jeśli któryś przekracza ~40 kB, zgłoś to jako dług: dokumentu, którego
+     domykający nie przegląda w całości, nie da się aktualizować kompletnie. Rotację robi `/zamknij`.
    - Wiszące lekcje globalne: przeskanuj docs/LESSONS_CANON.md pod kątem [CANDIDATE GLOBAL]. Jeśli są — zgłoś z gotowym poleceniem zapisu globalnego dla Twojego środowiska (Claude Code lub Codex).
    - Jeśli coś się rozjeżdża — powiedz wprost. Fałszywe "wszystko gra" jest gorsze niż uczciwe "te dokumenty się nie zgadzają".
 

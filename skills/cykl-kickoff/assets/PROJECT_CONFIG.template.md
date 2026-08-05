@@ -27,12 +27,14 @@ STATE_PROBE={np. git rev-parse --short HEAD; git rev-list --left-right --count o
 <!-- CURRENT_MILESTONE/CURRENT_SPRINT = identyfikatory zgodne z Pozycją w docs/ROADMAP.md (etap/krok).
      Rozbicie i statusy żyją TYLKO w ROADMAP — tu same wskaźniki. Sync robi /zamknij i /handoff.
      Pola STANOWE (jedna prawdziwa wartość) NADPISUJ w całości po pomiarze i znakuj
-     [zmierzone RRRR-MM-DD HH:MM UTC]. Pola dziennikowe są przyrostowe. -->
-CURRENT_MILESTONE={etap z ROADMAP, np. Etap 2: nazwa}
+     [zmierzone RRRR-MM-DD HH:MM UTC]. Pola dziennikowe są przyrostowe.
+     FAKT MA JEDNO MIEJSCE: jeśli wartość żyje już w innym dokumencie (wersja planu, budżet,
+     zakres etapu), wpisz tu ODWOŁANIE do tamtego pliku, nigdy kopię. Kopie się rozjeżdżają. -->
+CURRENT_MILESTONE={etap z ROADMAP — sam identyfikator, np. "Etap 2: nazwa". Bez wersji planu i budżetu}
 CURRENT_SPRINT={krok z ROADMAP, np. 2.3: nazwa}
 CURRENT_SPRINT_STATUS={...}
 CURRENT_SPRINT_BRANCH={sama nazwa brancha — nic więcej}
-REPO_STATE={STANOWE — wynik STATE_PROBE + [zmierzone …]; opisuje stan PRZED commitem tej sesji}
+REPO_STATE=<mierzone przez STATE_PROBE — NIE kopiuj tu wartości; kopia zapisana wewnątrz commitu opisuje stan sprzed samej siebie>
 REPO_NOTES={przyrostowe — trwała wiedza o repo: obejścia, ograniczenia narzędzi. Tu wiedzy NIE kasujemy}
 CURRENT_SPRINT_NEXT_DECISION={decyzja + numer BIEŻĄCEJ sesji; bez zmian → "przeniesione bez zmian z sesji N"}
 CURRENT_SPRINT_OPEN_RISKS={...}

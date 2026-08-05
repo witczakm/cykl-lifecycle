@@ -2,7 +2,7 @@
 name: cykl-kickoff
 description: Załóż nowy projekt wielosesyjny od zera — stwórz strukturę folderów, skopiuj template'y dokumentów stanu, przeprowadź wywiad założeń (w tym etapy roadmapy) i zostaw projekt gotowy do pierwszej sesji. Użyj gdy użytkownik pisze "/kickoff", "/zaloz", "załóż projekt", "nowy projekt wielosesyjny", "zacznij projekt od zera", "rozpocznij nowy projekt który będzie trwał wiele sesji". To komenda jednorazowa na projekt — w istniejącym projekcie użyj /start. NIE używaj gdy "nowy projekt" oznacza scaffold frameworka (npx create-react-app, cargo new, django-admin startproject) bez intencji wielosesyjnego prowadzenia — wtedy po prostu pomóż w kodzie.
 ---
-<!-- cykl-lifecycle v2.6.0 -->
+<!-- cykl-lifecycle v2.7.0 -->
 
 # /kickoff — założenie nowego projektu
 
