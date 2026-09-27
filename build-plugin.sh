@@ -54,6 +54,16 @@ echo "    markery  : $markers"
 echo "    wpisów   : $(unzip -l "$OUT" | tail -1 | awk '{print $2}')"
 echo "    skills/  : identyczne z repo"
 
+# 3b. Osobne zipy per skill — aplikacja Claude / Cowork importuje JEDEN skill z JEDNEGO zipa
+#     (korzeń archiwum = folder skilla). Zbiorczy zip niżej służy tylko instalacji w terminalu.
+mkdir -p dist && rm -f dist/cykl-*.zip
+for d in skills/cykl-*; do
+  n="$(basename "$d")"
+  ( cd skills && zip -r -q -X "$ROOT/dist/$n.zip" "$n" -x '*.DS_Store' )
+  [ "$(unzip -Z1 "dist/$n.zip" | head -1)" = "$n/" ] || { echo "BŁĄD: $n.zip nie ma folderu $n/ w korzeniu"; exit 1; }
+done
+echo "OK  dist/cykl-*.zip ($(ls dist/cykl-*.zip | wc -l | tr -d ' ') paczek, po jednym skillu)"
+
 # 4. Zip skilli — foldery cykl-* w KORZENIU archiwum, nie pod skills/.
 #    Dzięki temu instalacja to jedna komenda bez przenoszenia plików:
 #      unzip cykl-lifecycle-skills.zip -d ~/.claude/skills/     (Claude Code)

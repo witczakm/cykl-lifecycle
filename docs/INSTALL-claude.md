@@ -37,7 +37,7 @@ Otwórz nową sesję w katalogu projektu i wpisz `/kickoff`.
 
 ## Claude Cowork (desktop)
 
-**Settings → Capabilities → Skills → Add skill.** Dodaj każdy z 7 folderów `skills/cykl-*` osobno. Zrestartuj Cowork, otwórz rozmowę, wpisz `/kickoff`.
+**Settings → Capabilities → Skills → Add skill.** Wgraj każdy z 7 plików `dist/cykl-*.zip` osobno (z Release na GitHubie) — jeden zip = jeden skill z folderem skilla w korzeniu; zbiorczy `cykl-lifecycle-skills.zip` aplikacja odrzuca. Zrestartuj Cowork, otwórz rozmowę, wpisz `/kickoff`.
 
 > `/lekcja-g` (zapis globalny) w Cowork wymaga Claude Code do faktycznego zapisu do `~/.claude/` — Cowork wstawia „kandydata" i daje gotowe polecenie do wklejenia w terminalu. Pozostałe 6 komend działa w pełni.
 
