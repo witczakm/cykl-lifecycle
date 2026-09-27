@@ -4,6 +4,12 @@ All notable changes to cykl-lifecycle are documented here.
 
 ---
 
+## [2.8.1] — 2026-09-27
+
+### Fixed
+- **`cykl-kickoff` jest widoczny w Codex na liście skilli.** `agents/openai.yaml` miał `allow_implicit_invocation: false` — Codex nie wstrzykiwał skilla do kontekstu i na pytanie „czy masz cykl-kickoff?" odpowiadał „NIE", choć plik był zainstalowany (działało tylko jawne `$cykl-kickoff`). Teraz `true`, jak w pozostałych sześciu.
+  **Powód:** ochrona przed fałszywym scaffoldem w cwd jest już w dwóch innych miejscach — negatywne wyzwalacze w `description` (`npx create-*`, `cargo new`, `django-admin startproject`) i obowiązkowy krok „czy to faktycznie nowy projekt?" (adopt/abort, nigdy nadpisywanie). Niewidoczny skill kosztował więcej niż to ryzyko: użytkownik nie wiedział, że go ma.
+
 ## [2.8.0] — 2026-09-27
 
 Wydanie zamienia reguły, których nikt nie wykonywał, na skrypt, który je wykonuje. Diagnoza na żywym projekcie po 2.7.0 (30 sesji, 5 równoległych orkiestratorów): próg 40 kB i „nadpisuj, nie dopisuj" stały w tekście, a HANDOFF urósł do 418 kB (sekcja Snapshot 48 kB, 26 snapshotów rozdzielonych `---`), PROJECT_CONFIG miał 23 nagłówki wersji i 18 bloków `STAN POPRZEDNI`, LESSONS_CANON miał 32 lekcje ZA changelogiem, a drift wykryty przez `/start` był zgłaszany przez cztery kolejne sesje i nie naprawiany przez żadną. Inspiracja: claude-mem (odczyt stopniowy: indeks → szczegóły), spec-kit (osobny krok kontroli spójności artefaktów), beads/adr-tools (supersede zamiast dopisywania obok).

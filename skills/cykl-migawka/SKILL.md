@@ -2,7 +2,7 @@
 name: cykl-migawka
 description: Lekki snapshot stanu w środku sesji projektu wielosesyjnego — nadpisz HANDOFF, odśwież PROJECT_CONFIG i status kroku w roadmapie po istotnej decyzji, bez lekcji i bez commita. Użyj gdy użytkownik pisze "/migawka", "/handoff", "zapisz stan", "zrób snapshot", "utrwal tę decyzję", albo gdy w trakcie długiej sesji domknął się krok roadmapy lub zapadła ważna decyzja. To nie jest koniec sesji (to /zamknij) — to migawka w trakcie. NIE używaj przy snapshotach testów (Jest/Vitest), maszyn wirtualnych, baz danych ani containerów — skill dotyczy wyłącznie dokumentów stanu projektu lifecycle.
 ---
-<!-- cykl-lifecycle v2.8.0 -->
+<!-- cykl-lifecycle v2.8.1 -->
 
 # /migawka — snapshot w środku sesji
 

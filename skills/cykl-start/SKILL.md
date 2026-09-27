@@ -2,7 +2,7 @@
 name: cykl-start
 description: Wejście w sesję projektu wielosesyjnego — wczytaj stan z dokumentów i zreferuj "gdzie jesteśmy + następny ruch". Użyj na początku KAŻDEJ sesji projektu, gdy użytkownik pisze "/start", "zacznijmy sesję", "gdzie jesteśmy w projekcie", "co było ostatnio w projekcie", "wróćmy do projektu", albo wraca do pracy po przerwie. Uruchom też zanim zaczniesz jakąkolwiek pracę nad projektem wielosesyjnym, nawet bez prośby. NIE używaj, gdy "start/zacznij" dotyczy uruchamiania programu, serwera, kontenera, skryptu (npm start, docker start, cargo run) albo pisania kodu — to praca techniczna, nie wejście w sesję projektu.
 ---
-<!-- cykl-lifecycle v2.8.0 -->
+<!-- cykl-lifecycle v2.8.1 -->
 
 # /start — wejście w sesję
 

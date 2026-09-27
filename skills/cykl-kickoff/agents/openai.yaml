@@ -3,6 +3,8 @@ interface:
   display_name: "cykl-kickoff — założenie projektu"
   short_description: "Załóż nowy projekt wielosesyjny (struktura + dokumenty stanu). Komenda jednorazowa — wywołuj jawnie: $cykl-kickoff."
 policy:
-  # Tworzy strukturę plików — przy fałszywym odpaleniu najkosztowniejsze (scaffold w cwd).
-  # Dlatego TYLKO jawne wywołanie ($cykl-kickoff), zwłaszcza przy aktywnym frameworku 'superpowers'.
-  allow_implicit_invocation: false
+  # 2.8.1: widoczny na liście skilli jak pozostałe sześć. Do 2.8.0 był tylko jawny ($cykl-kickoff)
+  # z obawy o scaffold w cwd — w praktyce Codex raportował „nie mam cykl-kickoff", a przed fałszywym
+  # odpaleniem chronią negatywne wyzwalacze w description (npx create-*, cargo new…) i krok
+  # „czy to faktycznie nowy projekt?" w SKILL.md (adopt/abort, nigdy nadpisywanie).
+  allow_implicit_invocation: true
