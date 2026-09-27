@@ -2,7 +2,7 @@
 name: cykl-migawka
 description: Lekki snapshot stanu w środku sesji projektu wielosesyjnego — nadpisz HANDOFF, odśwież PROJECT_CONFIG i status kroku w roadmapie po istotnej decyzji, bez lekcji i bez commita. Użyj gdy użytkownik pisze "/migawka", "/handoff", "zapisz stan", "zrób snapshot", "utrwal tę decyzję", albo gdy w trakcie długiej sesji domknął się krok roadmapy lub zapadła ważna decyzja. To nie jest koniec sesji (to /zamknij) — to migawka w trakcie. NIE używaj przy snapshotach testów (Jest/Vitest), maszyn wirtualnych, baz danych ani containerów — skill dotyczy wyłącznie dokumentów stanu projektu lifecycle.
 ---
-<!-- cykl-lifecycle v2.7.0 -->
+<!-- cykl-lifecycle v2.8.0 -->
 
 # /migawka — snapshot w środku sesji
 
@@ -28,8 +28,9 @@ bieżącej aktualizacji między /start a /zamknij.
 3. **Zsynchronizuj nagłówek + changelog** — przy każdym edytowanym dokumencie z changelogiem (HANDOFF, ROADMAP):
    bump Wersja + Ostatnia aktualizacja i dopisz wiersz changelogu w tym samym ruchu.
    CONFIG: bump tylko nagłówka (Wersja + data — bez changelogu).
-   **Bramka spójności:** po edycji sprawdź, że data i wersja w nagłówku = te z ostatniego wiersza
-   changelogu. Rozjazd = popraw teraz; to dwa osobne ruchy edycyjne i drugi bywa pominięty.
+   **Bramka spójności:** po edycji uruchom `python3 <katalog skilla cykl-start>/scripts/porzadek.py --wykonaj <katalog projektu>`
+   — sprawdza datę nagłówka vs changelog, jeden blok bieżący i rozmiar, a nadmiar przenosi do
+   `docs/archive/`. FAIL = popraw teraz, nie zostawiaj `/zamknij`.
 
 4. **Pokaż** krótko: co zmieniłeś + nowa Pozycja (jeśli się przesunęła).
 

@@ -4,6 +4,27 @@ All notable changes to cykl-lifecycle are documented here.
 
 ---
 
+## [2.8.0] — 2026-09-27
+
+Wydanie zamienia reguły, których nikt nie wykonywał, na skrypt, który je wykonuje. Diagnoza na żywym projekcie po 2.7.0 (30 sesji, 5 równoległych orkiestratorów): próg 40 kB i „nadpisuj, nie dopisuj" stały w tekście, a HANDOFF urósł do 418 kB (sekcja Snapshot 48 kB, 26 snapshotów rozdzielonych `---`), PROJECT_CONFIG miał 23 nagłówki wersji i 18 bloków `STAN POPRZEDNI`, LESSONS_CANON miał 32 lekcje ZA changelogiem, a drift wykryty przez `/start` był zgłaszany przez cztery kolejne sesje i nie naprawiany przez żadną. Inspiracja: claude-mem (odczyt stopniowy: indeks → szczegóły), spec-kit (osobny krok kontroli spójności artefaktów), beads/adr-tools (supersede zamiast dopisywania obok).
+
+### Added
+- **`skills/cykl-start/scripts/porzadek.py`** — bramka i porządek dokumentów stanu, bez AI, stdlib. Bez flag sprawdza (kod wyjścia 1 = FAIL); z `--wykonaj` przenosi do `docs/archive/<NAZWA>-RRRR-Qn.md`: stos nagłówków wersji (zostaje pierwszy), bloki `<details>` z historią, sekcje „Historia…", snapshoty poza pierwszym (separator `---`), bloki `STAN POPRZEDNI`/`AKTUALIZACJA`/`AKTUALNY STAN` poza pierwszym w sekcji (także ogon „POPRZEDNI STAN" wewnątrz bieżącego cytatu), wiersze changelogu poza 5 najnowszymi; lekcje `### W<n>` zabłąkane za `## Changelog` wracają do Części II posortowane. Testy: rozmiar ≤ 40 kB (LESSONS: INFO — kanon rośnie z wiedzą, nie z driftem), 1 linia `Wersja`, jeden blok bieżący, changelog ≤ 5, data nagłówka = 1. wiersz changelogu, brak lekcji za changelogiem, wiek pliku (< 30 min = możliwa inna żywa sesja). Idempotentny; niczego nie kasuje. Test „pola stanowe zmierzone": `CURRENT_SPRINT_STATUS/_BRANCH/_NEXT_DECISION/_OPEN_RISKS/REPO_STATE` muszą mieć `[zmierzone RRRR-MM-DD …]` nie starszy niż nagłówek (albo odwołanie do sondy / `[DO SPRAWDZENIA]`) — szablon CONFIG ma ten znacznik od razu.
+  **Powód:** reguła bez egzekucji maszynowej gnije (lekcja W34 projektu, na którym mierzono). Na tym projekcie jeden przebieg: HANDOFF 417 708 → 6 497 B, CONFIG 48 975 → 8 717 B, ROADMAP 68 586 → 40 733 B, LESSONS 110 848 → 98 971 B (66 lekcji w kolejności).
+- **`/start` krok 0.5** — uruchamia `porzadek.py --wykonaj` przed czytaniem dokumentów; tabela trafia do referatu; FAIL po porządku (proza w jednej sekcji — skrypt wskazuje największą) = zadanie dla `/zamknij` tej sesji.
+- **Tryb orkiestratora w `/zamknij`** — agent z mandatem do commitowania wykonuje DOKŁADNIE blok z bramką; przy równoległych sesjach dodaje tylko własne linie.
+
+### Changed
+- **Bramka commita `/zamknij`** zaczyna się od `porzadek.py .` i dodaje `docs/LESSONS_CANON.md` oraz `docs/archive/` do `git add`.
+- **`/migawka` krok 3** — bramka spójności = `porzadek.py --wykonaj`, nie ręczne porównanie dwóch linii.
+- **`/lekcja` krok 2** — wstawka zawsze na końcu Części II przed `## Changelog` + test skryptem.
+- **`/start` jest read-only z jednym wyjątkiem** (porządek mechaniczny) — zapisane wprost w Celu i Zasadach.
+
+### Removed
+- Ręczny „próg rozmiaru — zmierz `wc -c`" z `/zamknij` i „rozmiar dokumentów" z drift-checku `/start` — obie reguły wykonuje skrypt.
+
+---
+
 ## [2.7.0] — 2026-08-05
 
 Wydanie atakuje **przyczynę powracającego driftu**, nie kolejny jego objaw. 2.5.0 naprawiła jeden mechanizm (pola dopisywane zamiast nadpisywanych) — drift wrócił, bo to była przyczyna wtórna. Diagnoza na żywym projekcie po czterech kolejnych sesjach wskazała trzy odrębne źródła i jeden czynnik, który je wszystkie mnoży.

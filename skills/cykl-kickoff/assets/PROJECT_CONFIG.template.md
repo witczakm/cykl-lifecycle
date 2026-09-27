@@ -32,12 +32,12 @@ STATE_PROBE={np. git rev-parse --short HEAD; git rev-list --left-right --count o
      zakres etapu), wpisz tu ODWOŁANIE do tamtego pliku, nigdy kopię. Kopie się rozjeżdżają. -->
 CURRENT_MILESTONE={etap z ROADMAP — sam identyfikator, np. "Etap 2: nazwa". Bez wersji planu i budżetu}
 CURRENT_SPRINT={krok z ROADMAP, np. 2.3: nazwa}
-CURRENT_SPRINT_STATUS={...}
-CURRENT_SPRINT_BRANCH={sama nazwa brancha — nic więcej}
+CURRENT_SPRINT_STATUS={...} [zmierzone {YYYY-MM-DD HH:MM}]
+CURRENT_SPRINT_BRANCH={sama nazwa brancha — nic więcej} [zmierzone {YYYY-MM-DD HH:MM}]
 REPO_STATE=<mierzone przez STATE_PROBE — NIE kopiuj tu wartości; kopia zapisana wewnątrz commitu opisuje stan sprzed samej siebie>
 REPO_NOTES={przyrostowe — trwała wiedza o repo: obejścia, ograniczenia narzędzi. Tu wiedzy NIE kasujemy}
-CURRENT_SPRINT_NEXT_DECISION={decyzja + numer BIEŻĄCEJ sesji; bez zmian → "przeniesione bez zmian z sesji N"}
-CURRENT_SPRINT_OPEN_RISKS={...}
+CURRENT_SPRINT_NEXT_DECISION={decyzja + numer BIEŻĄCEJ sesji; bez zmian → "przeniesione bez zmian z sesji N"} [zmierzone {YYYY-MM-DD HH:MM}]
+CURRENT_SPRINT_OPEN_RISKS={...} [zmierzone {YYYY-MM-DD HH:MM}]
 
 ## Last Completed Sprint
 LAST_SPRINT={...}

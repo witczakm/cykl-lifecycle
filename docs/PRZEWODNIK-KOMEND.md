@@ -1,6 +1,6 @@
 # Przewodnik komend — zestaw cykl-lifecycle
 
-**Wersja:** 2.7.0  
+**Wersja:** 2.8.0  
 **Dla kogo:** każda osoba używająca zestawu skilli do prowadzenia projektów wielosesyjnych
 
 ---
@@ -61,6 +61,7 @@ Model zapyta: "Jak ma się nazywać projekt? Jakie są główne etapy (3-7 hase�
 **Kiedy używać:** na początku KAŻDEJ sesji. Najlepiej jako pierwsza komenda po otwarciu czatu.
 
 **Co robi:**
+0. **Porządkuje dokumenty stanu skryptem** `scripts/porzadek.py --wykonaj` (od 2.8.0): historia → `docs/archive/`, jeden blok bieżący, 5 wierszy changelogu, lekcje zabłąkane za changelog wracają na miejsce; tabela PASS/FAIL trafia do referatu
 1. Czyta PROJECT_CONFIG, HANDOFF, ROADMAP, LESSONS_CANON
 2. **Mierzy stan poza dokumentami** — wykonuje `STATE_PROBE` z PROJECT_CONFIG i porównuje z zapisaną wartością
 3. Sprawdza, czy dokumenty są spójne między sobą (drift-check)
@@ -79,7 +80,10 @@ Pozycja: Etap 2/5 "Implementacja API" · krok 3/7 "Endpoint autoryzacji"
 Ostatnio zamknięte: endpoint rejestracji (krok 2) — testy przeszły.
 Następny ruch: zaimplementować endpoint /auth/login (krok 3).
 Drift: brak. Wiszące lekcje globalne: brak.
+Porządek: HANDOFF 418 kB → 6 kB (historia w docs/archive/HANDOFF-2026-Q3.md); 1 FAIL: ROADMAP 40,7 kB (sekcja „Pozycja") → do /zamknij.
 ```
+
+> **Dlaczego krok 0 istnieje.** Próg 40 kB i „nadpisuj, nie dopisuj" stały w skillu od 2.7.0 — a na żywym projekcie HANDOFF urósł do 418 kB, CONFIG miał 23 nagłówki wersji, a drift zgłaszany przez cztery kolejne sesje nie został naprawiony przez żadną. Reguła bez egzekucji maszynowej gnije; skrypt nie. Skrypt niczego nie kasuje i jest idempotentny — drugi przebieg nic nie przenosi.
 
 **Nie odpala się gdy:** wpisujesz "zacznij pisać funkcję", "uruchom npm start", "start serwera"
 
@@ -93,7 +97,8 @@ Drift: brak. Wiszące lekcje globalne: brak.
 1. Zbiera co się wydarzyło w sesji
 2. Aktualizuje HANDOFF (nadpisuje snapshot), ROADMAP (statusy kroków, Pozycja), PROJECT_CONFIG
 3. Wyciąga wnioski (opcjonalnie /lekcja lub /lekcja-g)
-4. Pokazuje diff + gotowy blok komend git
+4. Uruchamia `porzadek.py --wykonaj` — FAIL po porządku (proza w jednej sekcji) naprawiasz ręcznie, zanim pójdziesz dalej
+5. Pokazuje diff + gotowy blok komend git; blok zaczyna się od bramki `porzadek.py .` (kod wyjścia 1 = brak commita)
 
 **Przykładowe użycie:**
 ```
@@ -106,9 +111,10 @@ Nowa Pozycja: Etap 2/5 · krok 4/7 "Middleware JWT"
 Zaktualizowane: docs/HANDOFF.md v1.4.0, docs/ROADMAP.md v1.3.0
 Commit:
   set -euo pipefail
-  grep -n "Ostatnia aktualizacja" docs/HANDOFF.md docs/ROADMAP.md PROJECT_CONFIG.md \
+  python3 ~/.claude/skills/cykl-start/scripts/porzadek.py . \
+    && grep -n "Ostatnia aktualizacja" docs/HANDOFF.md docs/ROADMAP.md PROJECT_CONFIG.md \
     | grep -q "$(date +%Y-%m-%d)" \
-    && git add docs/HANDOFF.md docs/ROADMAP.md PROJECT_CONFIG.md \
+    && git add docs/HANDOFF.md docs/ROADMAP.md PROJECT_CONFIG.md docs/LESSONS_CANON.md docs/archive/ \
     && git commit -m "sesja: endpoint login, krok 3/7 DONE"
 ```
 

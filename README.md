@@ -6,7 +6,7 @@
 >
 > 🇬🇧 English version: **[witczakm/cycle-lifecycle](https://github.com/witczakm/cycle-lifecycle)**
 
-[![Version](https://img.shields.io/badge/version-2.7.0-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-2.8.0-blue)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Platformy](https://img.shields.io/badge/platformy-Claude%20Code%20%C2%B7%20Codex%20%C2%B7%20Cowork-orange)](#instalacja--wybierz-narz%C4%99dzie)
 [![Format](https://img.shields.io/badge/format-Agent%20Skills-blueviolet)](https://agentskills.io)
@@ -76,6 +76,19 @@ Komendy (`/start`, `/zamknij`…) wpisujesz po prostu w rozmowie z agentem.
 > **Codex:** wołasz przez `$nazwa` (np. `$cykl-start`) albo zdaniem („gdzie jesteśmy w projekcie?"). Komenda `/start` w Codeksie nie działa jako slash — użyj `$cykl-start`.
 
 ---
+
+## Co nowego w 2.8.0
+
+Wydanie zamienia **reguły, których nikt nie wykonywał, na skrypt, który je wykonuje**. Diagnoza na żywym projekcie po 2.7.0: próg 40 kB i „nadpisuj, nie dopisuj" stały w tekście, a HANDOFF urósł do 418 kB, PROJECT_CONFIG miał 23 nagłówki wersji, a drift był zgłaszany przez cztery kolejne sesje i nie naprawiany przez żadną.
+
+| Zmiana | Dlaczego |
+|---|---|
+| **`scripts/porzadek.py`** (w `cykl-start`): `/start` uruchamia go z `--wykonaj` przy pierwszym poleceniu w sesji; `/zamknij`, `/migawka`, `/lekcja` używają go jako bramki. Przenosi historię do `docs/archive/`, zostawia jeden blok bieżący i 5 wierszy changelogu, wraca lekcje zabłąkane za changelog, drukuje tabelę PASS/FAIL. Nic nie kasuje, jest idempotentny. | Reguła bez egzekucji maszynowej gnije — sprawdzone na czterech sesjach. Skrypt na tym samym projekcie: HANDOFF 418 → 6,5 kB, CONFIG 49 → 8,7 kB w jednym przebiegu. |
+| **Bramka commita w `/zamknij` zaczyna się od `porzadek.py`** (kod wyjścia 1 = STOP). | Dotąd bramka sprawdzała tylko datę; przepuszczała plik z 23 nagłówkami. |
+| **`/lekcja` ma stałe miejsce wstawki** — koniec Części II, przed `## Changelog`. | 32 lekcje trafiły za changelog, gdzie `/start` ich nie czyta. |
+| **Tryb orkiestratora w `/zamknij`.** | Skill zakładał człowieka wklejającego blok; w praktyce commituje prowadzący wielu wykonawców — bez bramki. |
+
+Aktualizujesz ze starszej wersji? Pierwszy `/start` po instalacji sam uporządkuje dokumenty; przejrzyj `docs/archive/` i dodaj go do commita.
 
 ## Co nowego w 2.7.0
 

@@ -2,7 +2,7 @@
 name: cykl-zamknij
 description: Domknięcie sesji projektu wielosesyjnego — zbierz co się wydarzyło, zaktualizuj dokumenty stanu (w tym pozycję w roadmapie), złap lekcje i przygotuj commit. Użyj na końcu sesji gdy użytkownik pisze "/zamknij", "domknijmy sesję", "zamykamy wątek", "kończymy na dziś", "zapisz postęp i zakończ". Uruchom zanim użytkownik zamknie czat po realnej pracy. NIE używaj gdy "zamknij" dotyczy pliku, okna, nawiasu, połączenia, zasobu, issue lub PR w kodzie — skill domyka SESJĘ pracy, nie obiekt w programie.
 ---
-<!-- cykl-lifecycle v2.7.0 -->
+<!-- cykl-lifecycle v2.8.0 -->
 
 # /zamknij — domknięcie sesji
 
@@ -47,9 +47,12 @@ ani nie generuj commita dla niczego — to zaśmieca historię.
    z ostatniego wiersza changelogu. Rozjazd = STOP, popraw teraz. Nagłówek i treść to dwa osobne
    ruchy edycyjne; sprawdzenie kosztuje dwa odczyty, więc rób je przy zapisie, nie zostawiaj `/start`.
 
-   **Próg rozmiaru — zmierz `wc -c`.** Powyżej ~40 kB przenieś historyczne wpisy do
-   `docs/archive/<nazwa>-RRRR-Qn.md`, zostaw ostatnie 5 + odsyłacz. Dokumentu, którego nie
-   przeglądasz w całości, nie da się aktualizować kompletnie — to źródło driftu, nie objaw.
+   **Porządek i próg rozmiaru robi skrypt.** Po edycjach uruchom
+   `python3 <katalog skilla cykl-start>/scripts/porzadek.py --wykonaj <katalog projektu>` (leży obok
+   `/start`, skille są sąsiadami). Przenosi historię do `docs/archive/`, zostawia 5 wierszy changelogu
+   i drukuje tabelę. FAIL rozmiaru po skrypcie = proza w jednej sekcji (skrypt ją wskazuje) — przenieś
+   ją do archiwum ręcznie, ZANIM przejdziesz dalej. Dokumentu, którego nie przeglądasz w całości,
+   nie da się aktualizować kompletnie — to źródło driftu, nie objaw.
 
    - docs/HANDOFF.md — nadpisz snapshot: data · gdzie jesteśmy (1 zdanie) · ostatnio zamknięte · następny ruch + dlaczego.
    - docs/ROADMAP.md — zmień statusy domkniętych kroków (TYLKO status, nie usuwaj treści), przesuń Pozycję. Etap flipuj na DONE **tylko przy spełnionej Bramce wyjścia** — pokaż, czym została spełniona; komplet kroków DONE to warunek konieczny, nie wystarczający. Dopiero wtedy rozbij NASTĘPNY etap na kroki (F6) i ustaw Pozycję na jego pierwszy krok.
@@ -68,14 +71,22 @@ ani nie generuj commita dla niczego — to zaśmieca historię.
    człowiek wkleja cały blok naraz, więc `# nie commituj, jeśli…` nie zatrzyma niczego.
 
    set -euo pipefail
-   grep -n "Ostatnia aktualizacja" docs/HANDOFF.md docs/ROADMAP.md PROJECT_CONFIG.md \
+   python3 <katalog skilla cykl-start>/scripts/porzadek.py . \
+     && grep -n "Ostatnia aktualizacja" docs/HANDOFF.md docs/ROADMAP.md PROJECT_CONFIG.md \
      | grep -q "$(date +%Y-%m-%d)" \
-     && git add docs/HANDOFF.md docs/ROADMAP.md PROJECT_CONFIG.md \
+     && git add docs/HANDOFF.md docs/ROADMAP.md PROJECT_CONFIG.md docs/LESSONS_CANON.md docs/archive/ \
      && git commit -m "..."
+
+   Pierwszy człon to bramka porządku (kod wyjścia 1 = FAIL w tabeli): jeden nagłówek wersji, jeden blok
+   bieżący na sekcję, changelog ≤ 5 wierszy, rozmiar ≤ 40 kB, data nagłówka = 1. wiersz changelogu.
 
    `pipefail` jest obowiązkowe: `cmd | tail` zwraca kod wyjścia `tail`, nie `cmd`, więc bramka
    przepuściłaby błąd. Pomiar stanu repo zrób w kroku 2 i wpisz do pola PRZED tym blokiem.
    Nie wykonuj git mutującego — blok podaj; wykonuje go użytkownik w terminalu.
+   **Tryb orkiestratora:** jeśli reguły projektu jawnie dają Ci mandat do commitowania dokumentów stanu
+   (prowadzący wielu wykonawców), wykonaj DOKŁADNIE ten blok, nie jego skróconą wersję — bramka
+   obowiązuje tak samo, a przy równoległych sesjach dodaj tylko własne linie (`git add -p` / `hash-object`),
+   nigdy cały plik z cudzymi zmianami.
 
 ## Zasady
 
