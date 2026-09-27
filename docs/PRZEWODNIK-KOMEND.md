@@ -1,6 +1,6 @@
 # Przewodnik komend — zestaw cykl-lifecycle
 
-**Wersja:** 2.8.1  
+**Wersja:** 2.8.2  
 **Dla kogo:** każda osoba używająca zestawu skilli do prowadzenia projektów wielosesyjnych
 
 ---

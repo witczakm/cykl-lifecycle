@@ -2,7 +2,7 @@
 name: cykl-lekcja
 description: Złap wniosek dotyczący TEGO projektu i dopisz go do LESSONS_CANON projektu (lekcja wykonawcza W lub fundamentalna F). Użyj gdy użytkownik pisze "/lekcja", "zapisz lekcję", "to na przyszłość", "wniosek z tego", "następnym razem inaczej", albo gdy w trakcie pracy pojawi się powtarzalna nauka specyficzna dla tego projektu. Jeśli wniosek dotyczy KAŻDEGO projektu użytkownika — użyj zamiast tego /lekcja-g. NIE używaj gdy mowa o lekcji w sensie edukacyjnym (plan lekcji, kurs, nauka języka, lekcja muzyki) — skill zapisuje wnioski projektowe, nie materiały edukacyjne.
 ---
-<!-- cykl-lifecycle v2.8.1 -->
+<!-- cykl-lifecycle v2.8.2 -->
 
 # /lekcja — wniosek projektowy
 

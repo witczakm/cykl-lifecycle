@@ -6,7 +6,7 @@
 >
 > 🇬🇧 English version: **[witczakm/cycle-lifecycle](https://github.com/witczakm/cycle-lifecycle)**
 
-[![Version](https://img.shields.io/badge/version-2.8.1-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-2.8.2-blue)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Platformy](https://img.shields.io/badge/platformy-Claude%20Code%20%C2%B7%20Codex%20%C2%B7%20Cowork-orange)](#instalacja--wybierz-narz%C4%99dzie)
 [![Format](https://img.shields.io/badge/format-Agent%20Skills-blueviolet)](https://agentskills.io)

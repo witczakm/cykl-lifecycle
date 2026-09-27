@@ -4,6 +4,12 @@ All notable changes to cykl-lifecycle are documented here.
 
 ---
 
+## [2.8.2] — 2026-09-27
+
+### Added
+- **Porządek dokumentuje się sam.** Po każdym przebiegu `porzadek.py --wykonaj` zostawia pod nagłówkiem dokumentu jedną linię `> **Archiwum:** historia tego dokumentu (ostatni porządek <data>, <N> linii) jest w docs/archive/<NAZWA>-RRRR-Qn.md` (nadpisywaną, nie dopisywaną) oraz tworzy raz `docs/archive/README.md` opisujący, co tam trafia i jak szukać starego stanu. Działa też dla projektów uporządkowanych wcześniejszą wersją (archiwum istnieje, odsyłacza brak).
+  **Powód:** 2.8.0 odchudził HANDOFF z 418 kB do 6 kB, ale czytelnik dokumentu nie miał śladu, że historia istnieje i gdzie jest — zgłoszone przez właściciela projektu tego samego dnia. Dokument, który stracił 3 000 linii bez adnotacji, wygląda na uszkodzony, nie uporządkowany.
+
 ## [2.8.1] — 2026-09-27
 
 ### Fixed

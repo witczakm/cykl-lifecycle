@@ -1,6 +1,6 @@
 {
   "name": "cykl-lifecycle",
-  "version": "2.8.1",
+  "version": "2.8.2",
   "description": "Pamięć projektu dla agentów AI — 7 komend do prowadzenia projektów wielosesyjnych. Stan żyje w plikach: /start wczytuje gdzie jesteś, /zamknij zapisuje postęp. Działa w Cowork, Claude Code i Codex.",
   "author": {
     "name": "Michał Witczak"

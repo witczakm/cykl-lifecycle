@@ -2,7 +2,7 @@
 name: cykl-lekcja-globalna
 description: Złap wniosek GLOBALNY — taki, który obowiązuje w KAŻDYM projekcie użytkownika, nie tylko bieżącym — i zapisz go do globalnego pliku lekcji dostępnego wszystkim projektom. Użyj gdy użytkownik pisze "/lekcja-g", "lekcja globalna", "to dotyczy wszystkich projektów", "zapisz globalnie", albo gdy nauka jest uniwersalna (sposób pracy z narzędziami, wzorzec komunikacji, zasada procesu — nie specyfika jednego projektu). Lekcja globalna ZAWSZE wymaga zgody użytkownika przed zapisem. NIE używaj gdy mowa o lekcji w sensie edukacyjnym ani gdy wniosek dotyczy tylko bieżącego projektu — wtedy użyj /lekcja.
 ---
-<!-- cykl-lifecycle v2.8.1 -->
+<!-- cykl-lifecycle v2.8.2 -->
 
 # /lekcja-g — wniosek globalny
 

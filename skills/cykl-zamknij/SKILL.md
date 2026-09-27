@@ -2,7 +2,7 @@
 name: cykl-zamknij
 description: Domknięcie sesji projektu wielosesyjnego — zbierz co się wydarzyło, zaktualizuj dokumenty stanu (w tym pozycję w roadmapie), złap lekcje i przygotuj commit. Użyj na końcu sesji gdy użytkownik pisze "/zamknij", "domknijmy sesję", "zamykamy wątek", "kończymy na dziś", "zapisz postęp i zakończ". Uruchom zanim użytkownik zamknie czat po realnej pracy. NIE używaj gdy "zamknij" dotyczy pliku, okna, nawiasu, połączenia, zasobu, issue lub PR w kodzie — skill domyka SESJĘ pracy, nie obiekt w programie.
 ---
-<!-- cykl-lifecycle v2.8.1 -->
+<!-- cykl-lifecycle v2.8.2 -->
 
 # /zamknij — domknięcie sesji
 

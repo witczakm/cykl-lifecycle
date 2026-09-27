@@ -1,6 +1,6 @@
 # cykl-lifecycle
 
-**Wersja 2.8.1** · [pełna dokumentacja i changelog](https://github.com/witczakm/cykl-lifecycle)
+**Wersja 2.8.2** · [pełna dokumentacja i changelog](https://github.com/witczakm/cykl-lifecycle)
 
 Pamięć projektu dla agentów AI. 7 komend, które dają projektowi pamięć między sesjami — stan żyje w plikach (`HANDOFF`, `ROADMAP`, `LESSONS`), nie w przewijaniu czatu. Zamiast tłumaczyć kontekst od nowa, wpisujesz `/start` i w pół minuty wiesz, gdzie skończyłeś i co dalej.
 

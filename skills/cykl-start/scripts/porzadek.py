@@ -19,6 +19,8 @@ Reguły porządku (deterministyczne, bez AI):
      „Aktualizacja <data>" wewnątrz dłuższego cytatu zaczyna nowy blok (łańcuchy dopisków).
   6. Tabela Changelog: zostaje N najnowszych wierszy (--zostaw), reszta → archiwum.
   7. LESSONS: lekcje `### W<n>` za `## Changelog` wracają do Części II, posortowane.
+  Po każdym przebiegu z przeniesieniami: linia `> **Archiwum:** …` pod nagłówkiem dokumentu
+  (nadpisywana) i `docs/archive/README.md` (raz) — porządek dokumentuje się sam.
   Test (bez porządku): pola stanowe PROJECT_CONFIG (`CURRENT_SPRINT_STATUS`, `_BRANCH`,
   `_NEXT_DECISION`, `_OPEN_RISKS`, `REPO_STATE`) mają `[zmierzone RRRR-MM-DD …]` nie starszy
   niż data nagłówka, albo `<mierzone przez STATE_PROBE>` / `[DO SPRAWDZENIA]`. Pole bez pomiaru
@@ -44,6 +46,7 @@ RE_DATA = re.compile(r"\d{4}-\d{2}-\d{2}")
 RE_W = re.compile(r"^### W(\d+)\b")
 RE_POLE = re.compile(r"^(CURRENT_SPRINT_STATUS|CURRENT_SPRINT_BRANCH|CURRENT_SPRINT_NEXT_DECISION|CURRENT_SPRINT_OPEN_RISKS|REPO_STATE)=")
 RE_ZMIERZONE = re.compile(r"\[zmierzone (\d{4}-\d{2}-\d{2})")
+RE_ODSYLACZ = re.compile(r"^> \*\*Archiwum:\*\* ")
 
 
 def sekcje(lines):
@@ -255,12 +258,50 @@ class Porzadek:
             nowe = self.lekcje(nowe)
         return re.sub(r"\n{3,}", "\n\n", "\n".join(zloz(nowe)))
 
+    def odsylacz(self, tekst, arch_rel, n_linii):
+        """Jedna linia pod nagłówkiem: dokąd poszła historia. Nadpisywana, nie dopisywana."""
+        stamp = dt.datetime.now().strftime("%Y-%m-%d %H:%M")
+        nowa = f"> **Archiwum:** historia tego dokumentu (ostatni porządek {stamp}, {n_linii} linii) jest w `{arch_rel}` — porzadek.py, cykl-lifecycle."
+        lines = tekst.split("\n")
+        for i, l in enumerate(lines):
+            if RE_ODSYLACZ.match(l):
+                lines[i] = nowa
+                return "\n".join(lines)
+        # wstaw po pierwszej linii **Wersja (i ewentualnej **Ostatnia aktualizacja tuż pod nią)
+        for i, l in enumerate(lines):
+            if RE_WERSJA.match(l):
+                j = i + 1
+                while j < len(lines) and RE_OSTATNIA.match(lines[j]):
+                    j += 1
+                lines[j:j] = ["", nowa]
+                return "\n".join(lines)
+        return tekst
+
     def zapisz_archiwum(self, root):
         real = [p for p in self.przeniesione if p[1]]
         if not real:
             return None
         arch_dir = os.path.join(root, "docs", "archive")
         os.makedirs(arch_dir, exist_ok=True)
+        return self._zapisz(root, arch_dir, real)
+
+    def readme_archiwum(self, root):
+        arch_dir = os.path.join(root, "docs", "archive")
+        os.makedirs(arch_dir, exist_ok=True)
+        readme = os.path.join(arch_dir, "README.md")
+        if not os.path.exists(readme):
+            with open(readme, "w", encoding="utf-8") as f:
+                f.write("# docs/archive — historia dokumentów stanu\n\n"
+                        "Tu trafia to, co `porzadek.py` (cykl-lifecycle, uruchamiany przez `/start`, `/zamknij`, `/migawka`) "
+                        "przeniósł z dokumentów stanu, żeby zostały cienkie i miały jeden blok bieżący: stare nagłówki wersji, "
+                        "zastąpione bloki `STAN POPRZEDNI` / `AKTUALIZACJA`, snapshoty poza pierwszym, sekcje „Historia…”, "
+                        "wiersze changelogu poza 5 najnowszymi.\n\n"
+                        "Jeden plik na dokument i kwartał: `<NAZWA>-RRRR-Qn.md`. Każdy przebieg dopisuje sekcję "
+                        "`# Przeniesione <data> z <plik>` z podsekcjami wg rodzaju. Nic nie jest kasowane; kolejność = kolejność w źródle.\n\n"
+                        "Odsyłacz do właściwego pliku stoi pod nagłówkiem każdego dokumentu stanu (`> **Archiwum:** …`). "
+                        "Szukasz starego stanu z konkretnej daty → `grep -n \"RRRR-MM-DD\" docs/archive/*.md`.\n")
+
+    def _zapisz(self, root, arch_dir, real):
         path = os.path.join(arch_dir, self.arch_nazwa())
         stamp = dt.datetime.now().strftime("%Y-%m-%d %H:%M")
         with open(path, "a", encoding="utf-8") as f:
@@ -382,6 +423,10 @@ def main():
             po = Porzadek(p)
             nowy = po.uporzadkuj(a.zostaw)
             arch = po.zapisz_archiwum(root)
+            istniejace = os.path.join(root, "docs", "archive", po.arch_nazwa())
+            if arch or os.path.exists(istniejace):
+                po.readme_archiwum(root)
+                nowy = po.odsylacz(nowy, os.path.relpath(arch or istniejace, root), sum(len(l) for _, l in po.przeniesione))
             if nowy != open(p, encoding="utf-8").read():
                 with open(p, "w", encoding="utf-8") as f:
                     f.write(nowy)
