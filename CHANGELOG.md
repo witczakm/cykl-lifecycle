@@ -14,6 +14,13 @@ All notable changes to cykl-lifecycle are documented here.
   budgets): rows become one-line index entries (id, kind, status, first sentence, 120 chars) within a
   6 KB budget with an explicit `[... N more ...]` marker; AGENTS/CLAUDE/PROJECT_CONFIG/ROADMAP are
   clipped to 2 KB with a marker. Output order and NOW.md are unchanged.
+- Archive ownership is manifest-bound: any `docs/archive/<16 hex>-<line>.txt` not named by
+  `migration.jsonl` fails `check` (so deleting a source row can no longer silently drop it from
+  `check`/`rollback`); manifest parts with a `path` are always read and hashed (`text`+`path` is
+  rejected). Residual: deleting both the row and its chunk needs a seal outside the manifest.
+- `context` index marker is exact (`[... N more selected rows not shown]`, no misleading
+  `grep -c`), a leading `[` in row text cannot forge a marker, and a tight budget degrades to
+  header/marker/nothing instead of exceeding the output cap.
 
 ## [3.0.1] — 2026-10-17
 
