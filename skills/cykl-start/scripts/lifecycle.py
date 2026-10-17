@@ -377,7 +377,7 @@ def clip(text, cap, hint):
 
 
 def row_line(row, width=120):
-    first = re.split(r'(?<=[.!?])\s|\n', row['text'].strip(), maxsplit=1)[0].lstrip('[')
+    first = re.split(r'(?<=[.!?])\s|\n', row['text'].strip(), maxsplit=1)[0].lstrip('[').replace('[...', '(...')  # marker stays unforgeable
     first = first if len(first) <= width else first[:width - 1] + '~'
     return '{} {} {}: {}'.format(row['id'], row['kind'], row['status'], first)
 

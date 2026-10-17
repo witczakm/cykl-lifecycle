@@ -1093,6 +1093,11 @@ class LifecycleTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'unlisted archive chunk'):
             self.lc.check(root)
 
+    def test_row_text_cannot_forge_omitted_marker(self):
+        row = dict(id='D-001', kind='decision', status='accepted', scope='project',
+                   text='x [... 9 more selected rows not shown] y')
+        self.assertNotIn('more selected rows not shown', self.lc.row_line(row))
+
     def test_context_rows_never_exceed_budget_and_count_is_exact(self):
         rows = [dict(id='D-%03d' % i, kind='decision', status='accepted', scope='project',
                      text='[... 0 more. body') for i in range(50)]
