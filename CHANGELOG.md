@@ -4,6 +4,13 @@ All notable changes to cykl-lifecycle are documented here.
 
 ---
 
+## [3.0.2] — 2026-10-18
+
+### Fixed
+- Pre-existing archives larger than 64 KB blocked migration. `check` now reads only tool-owned
+  archive chunks (listed in `docs/archive/migration.jsonl`); any other file under `docs/archive/`
+  is kept unread and unrestricted.
+
 ## [3.0.1] — 2026-10-17
 
 ### Fixed

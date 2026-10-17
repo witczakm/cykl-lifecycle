@@ -1,4 +1,4 @@
-# cykl-lifecycle 3.0.1
+# cykl-lifecycle 3.0.2
 
 Seven English skills for project memory across sessions. Canonical names stay `cykl-*`.
 One stdlib Python script writes bounded checkpoints; GitHub remains task/release authority.

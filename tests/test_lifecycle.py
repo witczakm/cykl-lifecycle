@@ -1042,6 +1042,19 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual(proc.stdout, b'')
         self.assertLessEqual(len(proc.stderr), 1024)
 
+    def test_preexisting_large_archive_is_kept_but_owned_chunk_cap_holds(self):
+        root, _, plan = self.migration_plan()
+        (root / 'docs/archive').mkdir()
+        big = root / 'docs/archive/legacy-v2.txt'
+        big.write_bytes(b'x' * 412519)
+        self.lc.migrate(root, plan, apply=True)
+        self.assertEqual(big.read_bytes(), b'x' * 412519)
+        self.lc.check(root)
+        chunk = next((root / 'docs/archive').glob('*-2.txt'))
+        chunk.write_bytes(b'y' * 65537)
+        with self.assertRaisesRegex(ValueError, 'cap exceeded'):
+            self.lc.check(root)
+
     def test_package_templates_and_descriptions_are_capped(self):
         self.assertEqual(len(self.lc.package_check()), 7)
 

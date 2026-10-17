@@ -1,4 +1,4 @@
-# cykl-lifecycle 3.0.1
+# cykl-lifecycle 3.0.2
 
 Seven English project lifecycle skills, retaining the canonical cykl-* names.
 Install all seven together; Python 3.9+ is required. State is written only through

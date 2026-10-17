@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""cykl-lifecycle 3.0.1. Offline, stdlib-only reader and sole lifecycle writer."""
+"""cykl-lifecycle 3.0.2. Offline, stdlib-only reader and sole lifecycle writer."""
 import argparse
 import hashlib
 import json
@@ -291,8 +291,7 @@ def check(root, parents=None, base=None, unlocked=False, merge_result=False):
         if rel == 'docs/DECISIONS.md' or rel == 'docs/archive/migration.jsonl':
             continue
         if rel.startswith('docs/archive/'):
-            read(root, rel, 65536)
-            continue
+            continue  # tool-owned chunks are capped and hashed by verify_archive; other files are kept unread
         cap = cap_for(rel)
         require(cap is not None, 'unexpected managed state: ' + rel)
         text = read(root, rel, cap)
@@ -365,7 +364,7 @@ def package_check(root=None):
         desc = re.search(r'^description: (.+)$', text, re.M)
         require(desc is not None, 'skill description missing')
         bounded(desc[1], 512, 'description')
-        require('<!-- cykl-lifecycle v3.0.1 -->' in text, 'skill version')
+        require('<!-- cykl-lifecycle v3.0.2 -->' in text, 'skill version')
     return found
 
 
