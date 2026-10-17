@@ -2,7 +2,7 @@
 name: cykl-roadmap
 description: "Show observed GitHub release/task position; /roadmap. Update only on explicit request."
 ---
-<!-- cykl-lifecycle v3.0.2 -->
+<!-- cykl-lifecycle v3.0.3 -->
 
 # cykl-roadmap
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""cykl-lifecycle 3.0.2. Offline, stdlib-only reader and sole lifecycle writer."""
+"""cykl-lifecycle 3.0.3. Offline, stdlib-only reader and sole lifecycle writer."""
 import argparse
 import hashlib
 import json
@@ -127,6 +127,14 @@ def cap_for(rel):
     return None
 
 
+def rglob_flat(base, root):
+    """rglob('*') that never enters .git or nested git checkouts (worktrees, nested repos)."""
+    for cur, dirs, files in os.walk(base):
+        dirs[:] = sorted(d for d in dirs if d != '.git' and not os.path.lexists(os.path.join(cur, d, '.git')))
+        for name in dirs + sorted(files):
+            yield Path(cur) / name
+
+
 def managed(root):
     """Enumerate only lifecycle surfaces; do not scan product fixtures for markers."""
     paths = set(FIXED_CAPS) | {'docs/DECISIONS.md'}
@@ -136,13 +144,15 @@ def managed(root):
             continue
         directory = safe(root, folder)
         if directory.exists():
-            for path in directory.rglob('*'):
+            for path in rglob_flat(directory, root):
                 rel = path.relative_to(root).as_posix()
                 safe(root, rel)
                 if path.is_file():
                     paths.add(rel)
     for name in ('AGENTS.md', 'CLAUDE.md'):
-        for path in root.rglob(name):
+        for path in rglob_flat(root, root):
+            if path.name != name:
+                continue
             rel = path.relative_to(root).as_posix()
             if path.name == name and not any(part in ('.git', '.cykl', 'node_modules', '.venv') for part in path.relative_to(root).parts):
                 paths.add(rel)
@@ -363,7 +373,7 @@ def package_check(root=None):
         desc = re.search(r'^description: (.+)$', text, re.M)
         require(desc is not None, 'skill description missing')
         bounded(desc[1], 512, 'description')
-        require('<!-- cykl-lifecycle v3.0.2 -->' in text, 'skill version')
+        require('<!-- cykl-lifecycle v3.0.3 -->' in text, 'skill version')
     return found
 
 

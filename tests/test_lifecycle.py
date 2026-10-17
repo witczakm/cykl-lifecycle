@@ -1236,6 +1236,20 @@ class LifecycleTests(unittest.TestCase):
             with self.subTest(path=rel), self.assertRaisesRegex(ValueError, 'projection|unlisted'):
                 self.lc.context(root, files=[rel])
 
+    def test_nested_git_checkouts_are_not_scanned(self):
+        root = self.init()
+        nested = root / '_worktrees/x'
+        nested.mkdir(parents=True)
+        (nested / '.git').write_text('gitdir: elsewhere')
+        (nested / 'CLAUDE.md').write_text('x' * 21000)
+        self.lc.check(root)
+        self.lc.context(root)
+        plain = root / 'sub'
+        plain.mkdir()
+        (plain / 'CLAUDE.md').write_text('x' * 21000)
+        with self.assertRaises(ValueError):
+            self.lc.check(root)
+
     def test_context_applies_active_packet_exclusions(self):
         files = self.attempt_files()
         packet = json.loads(files['docs/queue/T-1.json'])
