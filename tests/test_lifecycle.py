@@ -1468,6 +1468,16 @@ class LifecycleTests(unittest.TestCase):
         files = {'docs/lead/LEAD.md': '# LEAD\n', **(files or {})}
         return self.init(name, files=files, **kw)
 
+    def test_context_all_projected_files_at_cap_never_hard_fails(self):
+        root = self.lead(files={'docs/lead/THREADS.md': 'T' * 2048})
+        for rel in ('AGENTS.md', 'CLAUDE.md', 'docs/ROADMAP.md'):
+            (root / rel).write_text('a' * self.lc.cap_for(rel))
+        (root / 'PROJECT_CONFIG.md').write_text(CONFIG + '#' * (2048 - len(CONFIG)))
+        proc = subprocess.run([sys.executable, '-B', str(SCRIPT), 'context', '--root', str(root)], capture_output=True)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertLessEqual(len(proc.stdout), 16384)
+        self.assertIn(b'[... truncated', proc.stdout)
+
     def test_tasks_absent_is_github_and_bogus_fails(self):
         root = self.init()
         self.assertIsNone(self.lc.config_value(root, 'TASKS'))

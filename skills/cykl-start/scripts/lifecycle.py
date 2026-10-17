@@ -460,10 +460,17 @@ def context(root, skill='cykl-start', task=None, files=None):
     for path in found:
         text = path.read_text()
         pieces.append(text if path.parent.name == skill else re.search(r'^description: (.+)$', text, re.M)[0])
+    tail = 256 + (2050 if safe(root, 'docs/sync/status.json').exists() else 0)  # outbox JSON + status, added below
     for rel in ('AGENTS.md', 'CLAUDE.md', 'PROJECT_CONFIG.md', 'docs/NOW.md', 'docs/ROADMAP.md', 'docs/lead/THREADS.md'):
         if exact_path_exists(root, rel):
             text = read(root, rel, cap_for(rel))
-            pieces.append(text if rel == 'docs/NOW.md' else clip(text, 2048, 'read ' + rel + ' in full'))
+            if rel == 'docs/NOW.md':
+                pieces.append(text)
+                continue
+            # Remaining budget, so check-valid trees never push context over OUTPUT_CAP.
+            room = OUTPUT_CAP - len(('\n\n'.join(pieces) + '\n\n\n').encode()) - tail
+            if room >= 80:
+                pieces.append(clip(text, min(2048, room), 'read ' + rel + ' in full'))
     rows = [row for row in decision_rows(root).values()
             if row['id'] in state['references'] or (row['status'] == 'accepted' and row['scope'] in ('project', 'task:' + str(task)))]
     slot = len(pieces)
