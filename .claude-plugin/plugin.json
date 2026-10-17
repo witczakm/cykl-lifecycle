@@ -1,7 +1,7 @@
 {
   "name": "cykl-lifecycle",
-  "version": "3.0.3",
-  "description": "Seven English lifecycle skills with bounded checkpoints, reviewed migration and merge-result integrity checks.",
+  "version": "3.1.0",
+  "description": "Three editions (local, GitHub, GitHub + multi-agent lead): seven core skills plus an optional lead skill, bounded checkpoints, reviewed migration and merge-result integrity checks.",
   "author": {
     "name": "Michał Witczak"
   },

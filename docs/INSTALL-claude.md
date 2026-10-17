@@ -1,4 +1,4 @@
-> Historical v2 guide. Version 3.0.1 is breaking: use the [current README and migration guide](../README.md). Do not run v2 cleanup/writers on schema 3.
+> Historical v2 guide. Version 3 is breaking: use the [current README and migration guide](../README.md). Do not run v2 cleanup/writers on schema 3.
 
 # Instalacja — Claude (Code / Cowork / web)
 

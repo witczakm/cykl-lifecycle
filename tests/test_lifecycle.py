@@ -11,6 +11,10 @@ from unittest.mock import patch
 
 SCRIPT = Path(__file__).resolve().parents[1] / 'skills/cykl-start/scripts/lifecycle.py'
 
+REPO = Path(__file__).resolve().parents[1]
+CONFIG = 'CYKL_SCHEMA=3\nMIRROR=disabled\n'
+ROADMAP = '# ROADMAP\n\n- T-1 open First\n- T-2 done Second\n'
+
 
 class LifecycleTests(unittest.TestCase):
     @classmethod
@@ -1116,7 +1120,7 @@ class LifecycleTests(unittest.TestCase):
         self.lc.context(root, files=['x1', 'x2'])
 
     def test_package_templates_and_descriptions_are_capped(self):
-        self.assertEqual(len(self.lc.package_check()), 7)
+        self.assertEqual(len(self.lc.package_check()), 8)
 
     def test_merge_of_migration_with_large_v2_config(self):
         base = self.root / 'base'
@@ -1452,6 +1456,164 @@ class LifecycleTests(unittest.TestCase):
             with self.assertRaises((ValueError, FileExistsError)):
                 self.lc.rollback(root, dest)
         self.assertEqual((dest / 'keep').read_text(), 'other writer')
+
+
+    # Local edition, lead surfaces, package and installer (added in 3.1.0).
+    def local(self, name='local', roadmap=ROADMAP, files=None, **kw):
+        files = {'PROJECT_CONFIG.md': CONFIG + 'TASKS=local\n', 'docs/ROADMAP.md': roadmap,
+                 'docs/issues/T-1.md': 'Body', **(files or {})}
+        return self.init(name, files=files, **kw)
+
+    def lead(self, name='lead', files=None, **kw):
+        files = {'docs/lead/LEAD.md': '# LEAD\n', **(files or {})}
+        return self.init(name, files=files, **kw)
+
+    def test_context_all_projected_files_at_cap_never_hard_fails(self):
+        root = self.lead(files={'docs/lead/THREADS.md': 'T' * 2048})
+        for rel in ('AGENTS.md', 'CLAUDE.md', 'docs/ROADMAP.md'):
+            (root / rel).write_text('a' * self.lc.cap_for(rel))
+        (root / 'PROJECT_CONFIG.md').write_text(CONFIG + '#' * (2048 - len(CONFIG)))
+        proc = subprocess.run([sys.executable, '-B', str(SCRIPT), 'context', '--root', str(root)], capture_output=True)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertLessEqual(len(proc.stdout), 16384)
+        self.assertIn(b'[... truncated', proc.stdout)
+
+    def test_tasks_absent_is_github_and_bogus_fails(self):
+        root = self.init()
+        self.assertIsNone(self.lc.config_value(root, 'TASKS'))
+        self.lc.check(root)
+        (root / 'PROJECT_CONFIG.md').write_text(CONFIG + 'TASKS=bogus\n')
+        with self.assertRaisesRegex(ValueError, 'TASKS must be'):
+            self.lc.check(root)
+
+    def test_local_tasks_valid_and_roadmap_projected(self):
+        root = self.local()
+        self.lc.check(root)
+        self.assertIn('- T-1 open First', self.lc.context(root))
+
+    def test_local_tasks_reject_bad_roadmaps(self):
+        cases = {'duplicate': '- T-1 open A\n- T-1 done B\n', 'status': '- T-1 started A\n',
+                 'no title': '- T-1 open\n', 'missing file': '- T-1 open A\n- T-3 doing C\n'}
+        for label, roadmap in cases.items():
+            with self.subTest(label):
+                with self.assertRaisesRegex(ValueError, 'ROADMAP task line|missing task file'):
+                    self.lc.check(self.local('r-' + label.replace(' ', '-'), roadmap=roadmap))
+
+    def test_local_packet_issue_url_must_be_task_file(self):
+        files = self.attempt_files()
+        with self.assertRaisesRegex(ValueError, 'local packet issue_url'):
+            self.local('bad', work={'A-1': 'Deliver'}, files=files)
+        packet = json.loads(files['docs/queue/T-1.json'])
+        packet['issue_url'] = 'docs/issues/T-1.md'
+        files['docs/queue/T-1.json'] = json.dumps(packet)
+        self.lc.check(self.local('good', work={'A-1': 'Deliver'}, files=files))
+
+    def test_threads_projected_capped_and_serialized(self):
+        root = self.lead(files={'docs/lead/THREADS.md': '# THREADS\nlead-1 | lead | active\n'})
+        self.assertIn('lead-1 | lead | active', self.lc.context(root))
+        old = self.lc.check(root)
+        for text, message in (('x' * 2049, 'cap exceeded'), ('<<<<<<< a\nb\n=======\nc\n>>>>>>> d\n', 'conflict marker')):
+            with self.assertRaisesRegex(ValueError, message):
+                self.lc.checkpoint(root, self.draft(files={'docs/lead/THREADS.md': text}), old['content_sha256'])
+        self.lc.checkpoint(root, self.draft(files={'docs/lead/THREADS.md': '# THREADS\nlead-2\n'}), old['content_sha256'])
+        with self.assertRaisesRegex(ValueError, 'expected checkpoint hash mismatch'):
+            self.lc.checkpoint(root, self.draft(files={'docs/lead/THREADS.md': '# THREADS\nlead-3\n'}), old['content_sha256'])
+
+    def test_lead_requires_model_reason_only_with_lead_profile(self):
+        files = self.attempt_files()
+        packet = json.loads(files['docs/queue/T-1.json'])
+        packet['model'] = 'example-model'
+        files['docs/queue/T-1.json'] = json.dumps(packet)
+        self.init('plain', work={'A-1': 'Deliver'}, files=files)
+        with self.assertRaisesRegex(ValueError, 'model_reason required'):
+            self.lead(work={'A-1': 'Deliver'}, files=files)
+        packet['model_reason'] = 'Fits the task'
+        files['docs/queue/T-1.json'] = json.dumps(packet)
+        self.lead('lead-ok', work={'A-1': 'Deliver'}, files=files)
+
+    def test_lead_results_need_short_block_only_with_lead_profile(self):
+        files = {'docs/queue/results/A-1.md': 'free text report'}
+        self.init('plain', files=files)
+        with self.assertRaisesRegex(ValueError, 'SHORT block'):
+            self.lead(files=files)
+        long = '=== SHORT ===\n' + '\n'.join('l' * 3 for _ in range(9))
+        with self.assertRaisesRegex(ValueError, 'SHORT block'):
+            self.lead('long', files={'docs/queue/results/A-1.md': long})
+        self.lead('ok', files={'docs/queue/results/A-1.md': '=== SHORT ===\n' + 'ok\n' * 8})
+
+    def package(self, extra=(), drop=()):
+        skills = self.root / 'pkg/skills'
+        shutil.copytree(REPO / 'skills', skills)
+        for name in drop:
+            shutil.rmtree(skills / name)
+        for name in extra:
+            (skills / name).mkdir()
+            (skills / name / 'SKILL.md').write_text(
+                '---\nname: x\ndescription: "x"\n---\n<!-- cykl-lifecycle v%s -->\n' % self.lc.VERSION)
+        return self.root / 'pkg'
+
+    def test_package_accepts_core_plus_optional_lead_only(self):
+        self.assertEqual(len(self.lc.package_check(self.package())), 8)
+        shutil.rmtree(self.root / 'pkg')
+        self.assertEqual(len(self.lc.package_check(self.package(drop=['cykl-prowadzacy']))), 7)
+        shutil.rmtree(self.root / 'pkg')
+        with self.assertRaisesRegex(ValueError, 'seven core'):
+            self.lc.package_check(self.package(drop=['cykl-roadmap']))
+        shutil.rmtree(self.root / 'pkg')
+        with self.assertRaisesRegex(ValueError, 'seven core'):
+            self.lc.package_check(self.package(extra=['cykl-extra']))
+
+    def test_lead_skill_and_templates_are_capped_and_brief_is_valid(self):
+        lead = REPO / 'skills/cykl-prowadzacy'
+        for path in [lead / 'SKILL.md'] + list((lead / 'assets').iterdir()):
+            self.assertLessEqual(path.stat().st_size, 4096, path.name)
+        brief = json.loads((lead / 'assets/BRIEF.template.json').read_text())
+        files = {'docs/queue/T-1.json': json.dumps(brief),
+                 'docs/queue/attempts/A-1.json': json.dumps(dict(status='running', packet='docs/queue/T-1.json')),
+                 'docs/queue/results/A-1.md': '=== SHORT ===\nDone'}
+        self.lead(work={'A-1': 'Deliver'}, files=files)
+
+    def test_public_texts_carry_no_private_markers(self):
+        pattern = re.compile(r'bidsentinel|northstar|przetarg|witczak|micha[lł]|/users/|\bO\d{2,}\b|\bD\d{3,}\b', re.I)
+        paths = [REPO / 'README.md'] + [p for d in ('docs', 'skills') for p in (REPO / d).rglob('*') if p.is_file() and p.suffix in ('.md', '.json', '.py', '.txt')]
+        for path in paths:
+            if 'reports' in path.parts or path.name.startswith('test_'):
+                continue
+            self.assertIsNone(pattern.search(path.read_text().replace('witczakm/cykl-lifecycle', '').replace('Michał — personal plugins', '')), str(path))  # marketplace name kept: shipped since 2.4.0
+
+    def test_version_stamped_consistently(self):
+        version = self.lc.VERSION
+        for rel in ('.claude-plugin/plugin.json', '.codex-plugin/plugin.json'):
+            self.assertEqual(json.loads((REPO / rel).read_text())['version'], version)
+        market = json.loads((REPO / 'marketplace.json').read_text())
+        self.assertEqual(market['plugins'][0]['version'], version)
+        self.assertTrue((REPO / 'README.md').read_text().startswith('# cykl-lifecycle ' + version))
+        self.assertIn('## [' + version + ']', (REPO / 'CHANGELOG.md').read_text())
+
+    def test_forward_compat_with_previous_validator(self):
+        # CI checks out shallow without tags: fetch the tag when absent.
+        subprocess.run(['git', '-C', str(REPO), 'rev-parse', '-q', '--verify', 'refs/tags/v3.0.1'], capture_output=True).returncode and \
+            subprocess.run(['git', '-C', str(REPO), 'fetch', '-q', '--depth=1', 'origin', 'tag', 'v3.0.1'], capture_output=True)
+        proc = subprocess.run(['git', '-C', str(REPO), 'show', 'v3.0.1:skills/cykl-start/scripts/lifecycle.py'],
+                              capture_output=True)
+        self.assertEqual(proc.returncode, 0, 'v3.0.1 tag required')
+        old = self.root / 'old_lifecycle.py'
+        old.write_bytes(proc.stdout)
+        root = self.local('compat', files={'docs/lead/LEAD.md': '# LEAD\n', 'docs/lead/THREADS.md': '# THREADS\n'})
+        run = subprocess.run([sys.executable, '-B', str(old), 'check', '--root', str(root)], capture_output=True)
+        self.assertEqual(run.returncode, 0, run.stderr.decode())
+
+    def test_installer_editions_from_local_skills(self):
+        for edition, count in (('core', 7), ('multi', 8)):
+            home = self.root / ('home-' + edition)
+            (home / '.claude/skills/cykl-stale').mkdir(parents=True)
+            run = subprocess.run(['bash', str(REPO / 'install.sh'), 'claude', '--edition', edition],
+                                 capture_output=True, env={'HOME': str(home), 'PATH': '/usr/bin:/bin',
+                                 'CYKL_SKILLS_DIR': str(REPO / 'skills')})
+            self.assertEqual(run.returncode, 0, run.stderr.decode())
+            installed = sorted((home / '.claude/skills').glob('cykl-*'))
+            self.assertEqual(len(installed), count)
+            self.assertFalse((home / '.claude/skills/cykl-stale').exists())
 
 
 if __name__ == '__main__':

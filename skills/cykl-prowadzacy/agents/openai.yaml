@@ -1,0 +1,6 @@
+interface:
+  display_name: "cykl-prowadzacy"
+  short_description: "Bounded project lifecycle: prowadzacy"
+  default_prompt: "Use $cykl-prowadzacy for this project lifecycle task."
+policy:
+  allow_implicit_invocation: true

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""cykl-lifecycle 3.0.3. Offline, stdlib-only reader and sole lifecycle writer."""
+"""cykl-lifecycle 3.1.0. Offline, stdlib-only reader and sole lifecycle writer."""
 import argparse
 import hashlib
 import json
@@ -12,6 +12,11 @@ import sys
 import tempfile
 import uuid
 
+VERSION = '3.1.0'
+CORE_SKILLS = frozenset(('cykl-kickoff', 'cykl-start', 'cykl-migawka', 'cykl-zamknij',
+                         'cykl-roadmap', 'cykl-lekcja', 'cykl-lekcja-globalna'))
+OPTIONAL_SKILLS = frozenset(('cykl-prowadzacy',))
+TASK = re.compile(r'- (T-[\w-]+) (open|doing|done|dropped) \S.*\Z')
 OUTPUT_CAP = 16384
 NOW_CAP = 4096
 INDEX_HEADER = '# DECISIONS\n\nid\tkind\tstatus\tscope\tsupersedes\ttext\n'
@@ -22,7 +27,8 @@ MARKERS = re.compile(r'^(<<<<<<< |=======\s*$|>>>>>>> )', re.M)
 SECRET = re.compile(r'-----BEGIN [A-Z ]*PRIVATE KEY-----|(?:gh[pousr]_[A-Za-z0-9]{20,})|(?:AKIA[A-Z0-9]{16})|(?i:password|secret|api_key)\s*[:=]\s*["\']?[^\s"\']{8,}')
 FIXED_CAPS = {'PROJECT_CONFIG.md': 2048, 'docs/NOW.md': NOW_CAP,
               'docs/ROADMAP.md': 4096, 'docs/HANDOFF.md': 512,
-              'docs/LESSONS_CANON.md': 512}
+              'docs/LESSONS_CANON.md': 512, 'docs/lead/THREADS.md': 2048,
+              'docs/lead/LEAD.md': 4096}
 NOW_FIELDS = {'schema', 'checkpoint', 'previous_sha256', 'content_sha256', 'parents', 'base',
               'repo', 'branch', 'goal', 'position', 'next', 'preserve', 'work', 'risks',
               'references', 'reconciliation'}
@@ -282,12 +288,39 @@ def account(current, rec, sources):
         require(entry['action'] in ('close', 'supersede'), 'missing closing line: ' + key)
 
 
+def config_value(root, key):
+    """Value of a KEY=value line in PROJECT_CONFIG.md, or None."""
+    for line in read(root, 'PROJECT_CONFIG.md', 2048).splitlines():
+        if line.startswith(key + '='):
+            return line[len(key) + 1:].strip()
+    return None
+
+
+def check_local_tasks(root):
+    """TASKS=local: ROADMAP task lines are the task index; open/doing need a task file."""
+    seen = set()
+    for line in read(root, 'docs/ROADMAP.md', 4096).splitlines():
+        if line.startswith('- T-'):
+            match = TASK.match(line)
+            require(match and match[1] not in seen, 'ROADMAP task line: ' + line[:40])
+            seen.add(match[1])
+            if match[2] in ('open', 'doing'):
+                require(safe(root, 'docs/issues/' + match[1] + '.md').is_file(), 'missing task file: ' + match[1])
+
+
 def check(root, parents=None, base=None, unlocked=False, merge_result=False):
     root = Path(root)
     require(not merge_result or parents is not None, 'merge-result requires both parents and merge-base')
     require(unlocked or not safe(root, '.cykl/lock').exists(), 'writer lock present; inspect/recover first')
     config = read(root, 'PROJECT_CONFIG.md', 2048)
     require(config.splitlines().count('CYKL_SCHEMA=3') == 1, 'missing/downgraded schema')
+    tasks = config_value(root, 'TASKS')
+    if tasks is None:
+        tasks = 'github'
+    require(tasks in ('github', 'local'), 'TASKS must be github or local')
+    if tasks == 'local':
+        check_local_tasks(root)
+    lead = safe(root, 'docs/lead/LEAD.md').exists()
     state = parse_now(read(root, 'docs/NOW.md', NOW_CAP))
     rows = decision_rows(root)
     closed = closed_ids(state)
@@ -308,12 +341,19 @@ def check(root, parents=None, base=None, unlocked=False, merge_result=False):
         require(not MARKERS.search(text), 'conflict marker: ' + rel)
         if '/results/' in rel:
             require(len(text.splitlines()) <= 15, 'result line cap')
+            if lead:
+                lines = text.splitlines()
+                require(lines and lines[0] == '=== SHORT ===' and len(lines) <= 9, 'SHORT block: first line marker, at most 8 lines')
         if rel.endswith('.json'):
             data = loads(text)
             require(isinstance(data, dict), 'JSON record shape')
             if rel.startswith('docs/queue/T-'):
                 require(all(key in data for key in ('attempt', 'issue_url', 'revision', 'base', 'allowed_paths', 'excluded_paths', 'acceptance', 'offline', 'task_budget_bytes')), 'packet fields')
                 require(type(data['task_budget_bytes']) is int and 0 < data['task_budget_bytes'] <= 65536, 'packet budget')
+                if tasks == 'local':
+                    require(re.fullmatch(r'docs/issues/T-[\w-]+\.md', str(data['issue_url'])) and safe(root, data['issue_url']).is_file(), 'local packet issue_url must be an existing task file')
+                if lead and 'model' in data:
+                    require(isinstance(data.get('model_reason'), str) and data['model_reason'].strip(), 'packet model_reason required')
                 require(data['offline'] is True and data['attempt'] in set(state['work']) | closed, 'packet offline/attempt')
                 for field in ('allowed_paths', 'excluded_paths'):
                     require(isinstance(data[field], list) and all(isinstance(p, str) for p in data[field]), 'packet paths')
@@ -364,16 +404,17 @@ def package_check(root=None):
     skills = Path(root) / 'skills' if root is not None else Path(__file__).resolve().parents[2]
     require(not skills.is_symlink(), 'symlink package skills')
     found = sorted(skills.glob('cykl-*/SKILL.md'))
-    require(len(found) == 7, 'package must contain seven skills')
+    names = {skill.parent.name for skill in found}
+    require(CORE_SKILLS <= names <= CORE_SKILLS | OPTIONAL_SKILLS, 'package must contain seven core skills and at most cykl-prowadzacy')
     for skill in found:
-        for path in [skill] + list(skill.parent.glob('assets/*.md')) + list(skill.parent.glob('references/*.md')):
+        for path in [skill] + list(skill.parent.glob('assets/*.md')) + list(skill.parent.glob('assets/*.json')) + list(skill.parent.glob('references/*.md')):
             text = read(skills, path.relative_to(skills).as_posix(), 4096)
-            require(not re.search(r'docs/(?:archive|log)|gh issue view', text), 'raw history/issue read in skill/template')
+            require(path.suffix == '.json' or not re.search(r'docs/(?:archive|log)|gh issue view', text), 'raw history/issue read in skill/template')
         text = skill.read_text()
         desc = re.search(r'^description: (.+)$', text, re.M)
         require(desc is not None, 'skill description missing')
         bounded(desc[1], 512, 'description')
-        require('<!-- cykl-lifecycle v3.0.3 -->' in text, 'skill version')
+        require('<!-- cykl-lifecycle v' + VERSION + ' -->' in text, 'skill version')
     return found
 
 
@@ -419,10 +460,17 @@ def context(root, skill='cykl-start', task=None, files=None):
     for path in found:
         text = path.read_text()
         pieces.append(text if path.parent.name == skill else re.search(r'^description: (.+)$', text, re.M)[0])
-    for rel in ('AGENTS.md', 'CLAUDE.md', 'PROJECT_CONFIG.md', 'docs/NOW.md', 'docs/ROADMAP.md'):
+    tail = 256 + (2050 if safe(root, 'docs/sync/status.json').exists() else 0)  # outbox JSON + status, added below
+    for rel in ('AGENTS.md', 'CLAUDE.md', 'PROJECT_CONFIG.md', 'docs/NOW.md', 'docs/ROADMAP.md', 'docs/lead/THREADS.md'):
         if exact_path_exists(root, rel):
             text = read(root, rel, cap_for(rel))
-            pieces.append(text if rel == 'docs/NOW.md' else clip(text, 2048, 'read ' + rel + ' in full'))
+            if rel == 'docs/NOW.md':
+                pieces.append(text)
+                continue
+            # Remaining budget, so check-valid trees never push context over OUTPUT_CAP.
+            room = OUTPUT_CAP - len(('\n\n'.join(pieces) + '\n\n\n').encode()) - tail
+            if room >= 80:
+                pieces.append(clip(text, min(2048, room), 'read ' + rel + ' in full'))
     rows = [row for row in decision_rows(root).values()
             if row['id'] in state['references'] or (row['status'] == 'accepted' and row['scope'] in ('project', 'task:' + str(task)))]
     slot = len(pieces)

@@ -1,7 +1,7 @@
-# cykl-lifecycle 3.0.3
+# cykl-lifecycle 3.1.0
 
-Seven English project lifecycle skills, retaining the canonical cykl-* names.
-Install all seven together; Python 3.9+ is required. State is written only through
+Seven core English project lifecycle skills plus the optional cykl-prowadzacy (multi-agent
+lead), retaining the canonical cykl-* names. Install the skills together; Python 3.9+ is required. State is written only through
 cykl-start/scripts/lifecycle.py. Use cykl-start to resume and cykl-migawka/cykl-zamknij
 to checkpoint before compaction or close. Only a returned UUID/hash means saved.
 
@@ -15,8 +15,10 @@ Instruction changes also require explicit `replacements`. Inspect change/keep su
 Do not run 3.0.0 `migrate --apply` on projects with regular documentation.
 Never let old installed v2 writers continue after migration.
 
-Offline work is limited to already-dispatched tasks in one shared worktree. GitHub task
-and release authority remains online; this release has no API synchronization client.
+Three editions share this package. Local (TASKS=local): ROADMAP and docs/issues hold the
+tasks, no GitHub needed. GitHub (default): GitHub issues own tasks and releases; offline work
+is limited to already-dispatched tasks. GitHub + multi-agent: adds the /lead skill.
+There is no API synchronization client.
 Mirroring is disabled by default. Configure lifecycle-integrity as a required check in
 each repository and verify a blocked canary before claiming merge protection.
 

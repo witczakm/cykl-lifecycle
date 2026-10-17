@@ -1,0 +1,16 @@
+{
+  "attempt": "A-1",
+  "issue_url": "docs/issues/T-1.md",
+  "revision": "observed",
+  "base": "BASE-COMMIT",
+  "allowed_paths": ["src/"],
+  "excluded_paths": ["docs/archive", "docs/DECISIONS.md"],
+  "acceptance": "One sentence: what must be true when done.",
+  "offline": true,
+  "task_budget_bytes": 8192,
+  "model": "example-mid-model",
+  "model_reason": "One sentence: why this tier fits the task.",
+  "forbidden": ["git reset", "git rebase", "git commit --amend", "git stash", "git clean", "git add -A"],
+  "proof": ["command whose output must be quoted in the report"],
+  "report": "=== SHORT === then at most 8 lines to docs/queue/results/A-1.md; long report to docs/lead/reports/"
+}
