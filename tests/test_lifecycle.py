@@ -1581,6 +1581,9 @@ class LifecycleTests(unittest.TestCase):
         self.assertIn('## [' + version + ']', (REPO / 'CHANGELOG.md').read_text())
 
     def test_forward_compat_with_previous_validator(self):
+        # CI checks out shallow without tags: fetch the tag when absent.
+        subprocess.run(['git', '-C', str(REPO), 'rev-parse', '-q', '--verify', 'refs/tags/v3.0.1'], capture_output=True).returncode and \
+            subprocess.run(['git', '-C', str(REPO), 'fetch', '-q', '--depth=1', 'origin', 'tag', 'v3.0.1'], capture_output=True)
         proc = subprocess.run(['git', '-C', str(REPO), 'show', 'v3.0.1:skills/cykl-start/scripts/lifecycle.py'],
                               capture_output=True)
         self.assertEqual(proc.returncode, 0, 'v3.0.1 tag required')
