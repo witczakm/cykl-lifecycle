@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import re
 import shutil
 from pathlib import Path
 import subprocess
@@ -1477,11 +1478,12 @@ class LifecycleTests(unittest.TestCase):
         self.lead(work={'A-1': 'Deliver'}, files=files)
 
     def test_public_texts_carry_no_private_markers(self):
-        words = ('bidsentinel', 'northstar', '/users/', 'przetarg')
-        for path in list((REPO / 'skills/cykl-prowadzacy').rglob('*')) + [REPO / 'README.md', REPO / 'docs/design/v3.1.md']:
-            if path.is_file():
-                text = path.read_text().lower()
-                self.assertFalse([w for w in words if w in text], str(path))
+        pattern = re.compile(r'bidsentinel|northstar|przetarg|witczak|micha[lł]|/users/|\bO\d{2,}\b|\bD\d{3,}\b', re.I)
+        paths = [REPO / 'README.md'] + [p for d in ('docs', 'skills') for p in (REPO / d).rglob('*') if p.is_file() and p.suffix in ('.md', '.json', '.py', '.txt')]
+        for path in paths:
+            if 'reports' in path.parts or path.name.startswith('test_'):
+                continue
+            self.assertIsNone(pattern.search(path.read_text().replace('witczakm/cykl-lifecycle', '').replace('Michał — personal plugins', '')  # shipped marketplace display name, kept for installs), str(path))
 
     def test_version_stamped_consistently(self):
         version = self.lc.VERSION
@@ -1495,8 +1497,7 @@ class LifecycleTests(unittest.TestCase):
     def test_forward_compat_with_previous_validator(self):
         proc = subprocess.run(['git', '-C', str(REPO), 'show', 'v3.0.1:skills/cykl-start/scripts/lifecycle.py'],
                               capture_output=True)
-        if proc.returncode:
-            self.skipTest('v3.0.1 tag not available')
+        self.assertEqual(proc.returncode, 0, 'v3.0.1 tag required')
         old = self.root / 'old_lifecycle.py'
         old.write_bytes(proc.stdout)
         root = self.local('compat', files={'docs/lead/LEAD.md': '# LEAD\n', 'docs/lead/THREADS.md': '# THREADS\n'})

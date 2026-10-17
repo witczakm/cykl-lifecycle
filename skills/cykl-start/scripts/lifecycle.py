@@ -304,7 +304,9 @@ def check(root, parents=None, base=None, unlocked=False, merge_result=False):
     require(unlocked or not safe(root, '.cykl/lock').exists(), 'writer lock present; inspect/recover first')
     config = read(root, 'PROJECT_CONFIG.md', 2048)
     require(config.splitlines().count('CYKL_SCHEMA=3') == 1, 'missing/downgraded schema')
-    tasks = config_value(root, 'TASKS') or 'github'
+    tasks = config_value(root, 'TASKS')
+    if tasks is None:
+        tasks = 'github'
     require(tasks in ('github', 'local'), 'TASKS must be github or local')
     if tasks == 'local':
         check_local_tasks(root)
@@ -397,9 +399,9 @@ def package_check(root=None):
     names = {skill.parent.name for skill in found}
     require(CORE_SKILLS <= names <= CORE_SKILLS | OPTIONAL_SKILLS, 'package must contain seven core skills and at most cykl-prowadzacy')
     for skill in found:
-        for path in [skill] + list(skill.parent.glob('assets/*.md')) + list(skill.parent.glob('references/*.md')):
+        for path in [skill] + list(skill.parent.glob('assets/*.md')) + list(skill.parent.glob('assets/*.json')) + list(skill.parent.glob('references/*.md')):
             text = read(skills, path.relative_to(skills).as_posix(), 4096)
-            require(not re.search(r'docs/(?:archive|log)|gh issue view', text), 'raw history/issue read in skill/template')
+            require(path.suffix == '.json' or not re.search(r'docs/(?:archive|log)|gh issue view', text), 'raw history/issue read in skill/template')
         text = skill.read_text()
         desc = re.search(r'^description: (.+)$', text, re.M)
         require(desc is not None, 'skill description missing')

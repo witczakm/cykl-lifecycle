@@ -43,4 +43,5 @@ Resolve LIFECYCLE to the sibling `cykl-start/scripts/lifecycle.py`; PROJECT is t
     to `handed-over` with the NOW checkpoint UUID. The next lead reads NOW and THREADS.
 
 Read only `context` output (16,384 UTF-8 bytes total). All lifecycle writes use
-checkpoint or decisions add; keep returned acknowledgement cards before compaction.
+checkpoint or decisions add, except docs/lead/JOURNAL.md (append only, outside the writer;
+the writer rejects it). BRIEF issue_url: local = docs/issues/T-n.md, github = issue URL; keep returned acknowledgement cards before compaction.

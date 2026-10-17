@@ -17,8 +17,9 @@ add to the draft `files`: PROJECT_CONFIG.md with the lines CYKL_SCHEMA=3, MIRROR
 TASKS=local, MERGE_PROTECTION=local hook only (no server enforcement), plus a ROADMAP.md
 from the local variant in ROADMAP.template.md.
 Run `python3 "$LIFECYCLE" checkpoint --root "$PROJECT" --input "$DRAFT" --expected absent`.
-Then run context. Install the hook/Action and configure the required lifecycle-integrity
-check per repository. Until a blocked canary proves it, report merge protection unverified.
+Then run context. Install the pre-commit hook. For github only, also install the Action and
+configure the required lifecycle-integrity check per repository (never for local: no
+`.github/workflows`, no `gh`). Until a blocked canary proves it, report merge protection unverified.
 This release does not create GitHub issues, milestones or releases.
 
 Resolve LIFECYCLE to the installed sibling `cykl-start/scripts/lifecycle.py`; PROJECT

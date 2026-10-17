@@ -1,6 +1,6 @@
 {
   "attempt": "A-1",
-  "issue_url": "https://github.com/OWNER/REPO/issues/1",
+  "issue_url": "docs/issues/T-1.md",
   "revision": "observed",
   "base": "BASE-COMMIT",
   "allowed_paths": ["src/"],
