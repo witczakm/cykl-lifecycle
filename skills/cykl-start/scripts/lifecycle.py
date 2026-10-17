@@ -323,8 +323,7 @@ def check(root, parents=None, base=None, unlocked=False, merge_result=False):
         if key.startswith('A-'):
             require(safe(root, 'docs/queue/attempts/' + key + '.json').exists(), 'missing attempt record')
     manifest = safe(root, 'docs/archive/migration.jsonl')
-    if manifest.exists():
-        verify_archive(root)
+    verify_archive(root)
     if parents is not None:
         require(len(parents) == 2 and base is not None, 'both parents and merge-base required')
         union, ids = source_union(parents, base)
@@ -378,20 +377,23 @@ def clip(text, cap, hint):
 
 
 def row_line(row, width=120):
-    first = re.split(r'(?<=[.!?])\s|\n', row['text'].strip(), maxsplit=1)[0]
+    first = re.split(r'(?<=[.!?])\s|\n', row['text'].strip(), maxsplit=1)[0].lstrip('[')
     first = first if len(first) <= width else first[:width - 1] + '~'
     return '{} {} {}: {}'.format(row['id'], row['kind'], row['status'], first)
 
 
 def context_rows(rows, budget):
     # One-line index entries; full row: grep '^<id>' docs/DECISIONS.md (no extra subcommand).
+    # Never exceeds budget: degrades to header + exact omitted-count marker, or to nothing.
     lines = [row_line(r) for r in rows]
     head = 'Active decisions/lessons (index; full row: grep "^<id>" docs/DECISIONS.md):'
+    if len(head.encode()) > budget:
+        return ''
     out, used = [head], len(head.encode())
     for i, line in enumerate(lines):
-        mark = '[... {} more - grep -c "" docs/DECISIONS.md; ids: grep -o "^[DL]-[^\t]*" docs/DECISIONS.md]'.format(len(lines) - i)
-        if used + len(line.encode()) + 1 + len(mark.encode()) + 1 > budget and i < len(lines):
-            if used + len(mark.encode()) + 1 <= budget or i == 0:
+        mark = '[... {} more selected rows not shown]'.format(len(lines) - i)
+        if used + len(line.encode()) + 1 + len(mark.encode()) + 1 > budget:
+            if used + len(mark.encode()) + 1 <= budget:
                 out.append(mark)
             return '\n'.join(out)
         out.append(line)
@@ -434,7 +436,9 @@ def context(root, skill='cykl-start', task=None, files=None):
         pieces.append(read(root, rel, min(cap_for(rel) or 8192, 8192)))
     if rows:
         used = len(('\n\n'.join(pieces) + '\n\n\n').encode())
-        pieces.insert(slot, context_rows(rows, max(min(6144, OUTPUT_CAP - used), 0)))
+        index = context_rows(rows, max(min(6144, OUTPUT_CAP - used), 0))
+        if index:
+            pieces.insert(slot, index)
     return bounded('\n\n'.join(pieces) + '\n')
 
 
@@ -777,10 +781,8 @@ def reconstruct(root, row):
     cursor = 1
     for part in row['parts']:
         require(part['start'] == cursor, 'archive range coverage')
-        if 'text' in part:
-            text = part['text']
-        else:
-            text = read(root, part['path'], 65536)
+        require(not ('text' in part and 'path' in part), 'archive part text and path')
+        text = read(root, part['path'], 65536) if 'path' in part else part['text']
         require(sha(text.encode()) == part['sha256'], 'archive chunk hash')
         require(len(text.splitlines(keepends=True)) == part['end'] - part['start'] + 1, 'archive line count')
         cursor = part['end'] + 1
@@ -790,10 +792,24 @@ def reconstruct(root, row):
     return raw
 
 
+CHUNK_NAME = re.compile(r'[0-9a-f]{16}-[1-9][0-9]*\.txt')
+
+
 def verify_archive(root):
-    for row in manifest_rows(root):
-        if row['type'] == 'source':
-            reconstruct(root, row)
+    owned = set()
+    if safe(root, 'docs/archive/migration.jsonl').exists():
+        for row in manifest_rows(root):
+            if row['type'] == 'source':
+                reconstruct(root, row)
+                for part in row['parts']:
+                    if 'path' in part:
+                        require(re.fullmatch('docs/archive/' + CHUNK_NAME.pattern, part['path']), 'archive chunk path')
+                        owned.add(part['path'])
+    folder = safe(root, 'docs/archive')
+    if folder.is_dir():
+        for item in folder.iterdir():
+            rel = 'docs/archive/' + item.name
+            require(not CHUNK_NAME.fullmatch(item.name) or rel in owned, 'unlisted archive chunk: ' + rel)
 
 
 def archive_show(root, source, start, end):

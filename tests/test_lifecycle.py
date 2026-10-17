@@ -1074,6 +1074,42 @@ class LifecycleTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'cap exceeded'):
             self.lc.check(root)
 
+    def test_manifest_row_deletion_or_planted_chunk_fails_check(self):
+        root, _, plan = self.migration_plan()
+        self.lc.migrate(root, plan, apply=True)
+        manifest = root / 'docs/archive/migration.jsonl'
+        original = manifest.read_text()
+        lines = original.splitlines(keepends=True)
+        sources = [i for i, l in enumerate(lines) if '"type": "source"' in l or '"type":"source"' in l]
+        self.assertTrue(sources)
+        manifest.write_text(''.join(l for i, l in enumerate(lines) if i != sources[0]))
+        with self.assertRaisesRegex(ValueError, 'unlisted archive chunk'):
+            self.lc.check(root)
+        with self.assertRaisesRegex(ValueError, 'unlisted archive chunk'):
+            self.lc.rollback(root, self.root / 'restored-deleted-row')
+        manifest.write_text(original)
+        self.lc.check(root)
+        (root / 'docs/archive' / ('0' * 16 + '-1.txt')).write_text('planted')
+        with self.assertRaisesRegex(ValueError, 'unlisted archive chunk'):
+            self.lc.check(root)
+
+    def test_context_rows_never_exceed_budget_and_count_is_exact(self):
+        rows = [dict(id='D-%03d' % i, kind='decision', status='accepted', scope='project',
+                     text='[... 0 more. body') for i in range(50)]
+        for budget in range(0, 400):
+            out = self.lc.context_rows(rows, budget)
+            self.assertLessEqual(len(out.encode()), budget)
+        out = self.lc.context_rows(rows, 600)
+        shown = sum(1 for r in rows if r['id'] + ' ' in out)
+        self.assertEqual(shown + int(re.findall(r'\[\.\.\. (\d+) more selected', out)[-1]), 50)
+        self.assertNotIn('grep -c', out)
+        root = self.init()
+        (root / 'docs/DECISIONS.md').write_text(self.lc.render_decisions(rows))
+        (root / 'CLAUDE.md').write_text('c' * 4000)
+        (root / 'x1').write_text('x' * 5000)
+        (root / 'x2').write_text('x' * 1000)
+        self.lc.context(root, files=['x1', 'x2'])
+
     def test_package_templates_and_descriptions_are_capped(self):
         self.assertEqual(len(self.lc.package_check()), 7)
 
