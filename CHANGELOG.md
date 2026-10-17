@@ -4,6 +4,12 @@ All notable changes to cykl-lifecycle are documented here.
 
 ---
 
+## [3.0.3] — 2026-10-18
+
+### Fixed
+- Nested git worktrees/repos inside the project are not scanned for AGENTS/CLAUDE or lifecycle files
+  (directories containing `.git`, and `.git` itself, are skipped; root-level files unchanged).
+
 ## [3.0.2] — 2026-10-18
 
 ### Fixed

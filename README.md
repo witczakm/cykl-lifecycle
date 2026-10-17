@@ -1,4 +1,4 @@
-# cykl-lifecycle 3.0.2
+# cykl-lifecycle 3.0.3
 
 Seven English skills for project memory across sessions. Canonical names stay `cykl-*`.
 One stdlib Python script writes bounded checkpoints; GitHub remains task/release authority.
@@ -67,7 +67,7 @@ outside this enforcement boundary.
 ## Migration from v2 (breaking)
 
 **Do not run 3.0.0 `migrate --apply` on a project with regular documentation.**
-Upgrade to 3.0.2 and generate a new plan. The 3.0.0 inventory included ordinary docs.
+Upgrade to 3.0.3 and generate a new plan. The 3.0.0 inventory included ordinary docs.
 
 Migration is **keep-by-default**. The closed default source list is `PROJECT_CONFIG.md`,
 `docs/HANDOFF.md`, `docs/ROADMAP.md`, and `docs/LESSONS_CANON.md`, when present.

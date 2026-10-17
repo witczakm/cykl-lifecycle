@@ -2,7 +2,7 @@
 name: cykl-lekcja-globalna
 description: "Propose a cross-project lesson; /lekcja-g; English alias: /lesson-global. Global installation needs explicit approval."
 ---
-<!-- cykl-lifecycle v3.0.2 -->
+<!-- cykl-lifecycle v3.0.3 -->
 
 # cykl-lekcja-globalna
 

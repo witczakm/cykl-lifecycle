@@ -2,7 +2,7 @@
 name: cykl-lekcja
 description: "Record a project lesson with evidence; /lekcja; English alias: /lesson."
 ---
-<!-- cykl-lifecycle v3.0.2 -->
+<!-- cykl-lifecycle v3.0.3 -->
 
 # cykl-lekcja
 
