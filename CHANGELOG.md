@@ -31,6 +31,30 @@ Additive minor release: three editions of one package. No migration; NOW schema 
 - The CI integrity validator pins the version marker, so this release needs the same
   one-time maintainer merge as 3.0.1.
 
+## [3.0.3] — 2026-10-18
+
+### Fixed
+- Nested git worktrees/repos inside the project are not scanned for AGENTS/CLAUDE or lifecycle files
+  (directories containing `.git`, and `.git` itself, are skipped; root-level files unchanged).
+
+## [3.0.2] — 2026-10-18
+
+### Fixed
+- Pre-existing archives larger than 64 KB blocked migration. `check` now reads only tool-owned
+  archive chunks (listed in `docs/archive/migration.jsonl`); any other file under `docs/archive/`
+  is kept unread and unrestricted.
+- `context` no longer fails when many decisions/lessons are active (index projection + section
+  budgets): rows become one-line index entries (id, kind, status, first sentence, 120 chars) within a
+  6 KB budget with an explicit `[... N more ...]` marker; AGENTS/CLAUDE/PROJECT_CONFIG/ROADMAP are
+  clipped to 2 KB with a marker. Output order and NOW.md are unchanged.
+- Archive ownership is manifest-bound: any `docs/archive/<16 hex>-<line>.txt` not named by
+  `migration.jsonl` fails `check` (so deleting a source row can no longer silently drop it from
+  `check`/`rollback`); manifest parts with a `path` are always read and hashed (`text`+`path` is
+  rejected). Residual: deleting both the row and its chunk needs a seal outside the manifest.
+- `context` index marker is exact (`[... N more selected rows not shown]`, no misleading
+  `grep -c`), a leading `[` in row text cannot forge a marker, and a tight budget degrades to
+  header/marker/nothing instead of exceeding the output cap.
+
 ## [3.0.1] — 2026-10-17
 
 ### Fixed
