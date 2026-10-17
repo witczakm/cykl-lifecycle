@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""cykl-lifecycle 3.0.0. Offline, stdlib-only reader and sole lifecycle writer."""
+"""cykl-lifecycle 3.0.1. Offline, stdlib-only reader and sole lifecycle writer."""
 import argparse
 import hashlib
 import json
@@ -53,16 +53,36 @@ def loads(text):
     return json.loads(text, object_pairs_hook=unique_pairs)
 
 
-def safe(root, relative):
+def resolve_entry_path(root, relative):
+    """Resolve existing components to disk spelling, retaining any missing suffix."""
     root = Path(root)
     rel = Path(relative)
     require(not rel.is_absolute() and '..' not in rel.parts and rel.parts, 'escaping/empty path')
     p = root
     require(not root.is_symlink(), 'symlink root')
     for part in rel.parts:
-        p = p / part
-        require(not p.is_symlink(), 'symlink on managed path: ' + str(rel))
+        candidate = p / part
+        require(not candidate.is_symlink(), 'symlink on managed path: ' + str(rel))
+        if p.is_dir():
+            with os.scandir(p) as entries:
+                names = {entry.name: entry for entry in entries}
+            if part not in names and candidate.exists():
+                # Ask the volume which entry aliases this name; casefold alone is not identity.
+                identity = candidate.stat(follow_symlinks=False)
+                matches = [name for name, entry in names.items()
+                           if os.path.samestat(entry.stat(follow_symlinks=False), identity)]
+                require(len(matches) == 1, 'ambiguous on-disk path: ' + str(rel))
+                candidate = p / matches[0]
+        p = candidate
     return p
+
+
+def safe(root, relative):
+    path = resolve_entry_path(root, relative)
+    actual = path.relative_to(root).as_posix()
+    require(actual == Path(relative).as_posix(),
+            'path spelling mismatch: ' + str(relative) + '; on-disk path: ' + actual)
+    return path
 
 
 def bounded(text, cap=OUTPUT_CAP, label='output'):
@@ -112,6 +132,8 @@ def managed(root):
     paths = set(FIXED_CAPS) | {'docs/DECISIONS.md'}
     root = Path(root)
     for folder in ('docs/queue', 'docs/sync', 'docs/issues', 'docs/decisions', 'docs/archive'):
+        if not exact_path_exists(root, folder):
+            continue
         directory = safe(root, folder)
         if directory.exists():
             for path in directory.rglob('*'):
@@ -122,9 +144,9 @@ def managed(root):
     for name in ('AGENTS.md', 'CLAUDE.md'):
         for path in root.rglob(name):
             rel = path.relative_to(root).as_posix()
-            if not any(part in ('.git', '.cykl', 'node_modules', '.venv') for part in path.relative_to(root).parts):
+            if path.name == name and not any(part in ('.git', '.cykl', 'node_modules', '.venv') for part in path.relative_to(root).parts):
                 paths.add(rel)
-    return sorted(rel for rel in paths if safe(root, rel).exists())
+    return sorted(rel for rel in paths if exact_path_exists(root, rel))
 
 
 def render_now(state):
@@ -343,7 +365,7 @@ def package_check(root=None):
         desc = re.search(r'^description: (.+)$', text, re.M)
         require(desc is not None, 'skill description missing')
         bounded(desc[1], 512, 'description')
-        require('<!-- cykl-lifecycle v3.0.0 -->' in text, 'skill version')
+        require('<!-- cykl-lifecycle v3.0.1 -->' in text, 'skill version')
     return found
 
 
@@ -356,7 +378,7 @@ def context(root, skill='cykl-start', task=None, files=None):
         text = path.read_text()
         pieces.append(text if path.parent.name == skill else re.search(r'^description: (.+)$', text, re.M)[0])
     for rel in ('AGENTS.md', 'CLAUDE.md', 'PROJECT_CONFIG.md', 'docs/NOW.md', 'docs/ROADMAP.md'):
-        if safe(root, rel).exists():
+        if exact_path_exists(root, rel):
             pieces.append(read(root, rel, cap_for(rel)))
     for row in decision_rows(root).values():
         if row['id'] in state['references'] or (row['status'] == 'accepted' and row['scope'] in ('project', 'task:' + str(task))):
@@ -514,6 +536,7 @@ def draft_changes(root, draft, expected):
     state = parse_now(text)
     changes = {}
     for rel, content in draft.get('files', {}).items():
+        safe(root, rel)
         cap = cap_for(rel)
         require(cap is not None and rel not in ('docs/NOW.md',), 'unsupported checkpoint write')
         changes[rel] = bounded(content, cap, rel).encode()
@@ -586,19 +609,59 @@ def decisions_add(root, row, expected):
     return bounded(saved_card(root, changes) + line)
 
 
+# v2 e285f95: porzadek.py:36 and kickoff references/struktura-projektu.md:35-42.
+# ADRs/registers are knowledge documents (same reference:46-53), not state files.
+LEGACY_STATE_PATHS = ('PROJECT_CONFIG.md', 'docs/HANDOFF.md', 'docs/ROADMAP.md',
+                      'docs/LESSONS_CANON.md')
+
+
+def exact_path_exists(root, relative):
+    path = resolve_entry_path(root, relative)
+    return path.relative_to(root).as_posix() == Path(relative).as_posix() and path.exists()
+
+
 def source_paths(root):
+    return sorted(rel for rel in LEGACY_STATE_PATHS if exact_path_exists(root, rel))
+
+
+def keep_paths(root, sources):
     root = Path(root)
-    paths = set()
-    for rel in ('PROJECT_CONFIG.md', 'AGENTS.md', 'CLAUDE.md'):
-        if safe(root, rel).exists():
-            paths.add(rel)
-    docs = safe(root, 'docs')
-    if docs.exists():
-        for path in docs.rglob('*'):
-            safe(root, path.relative_to(root).as_posix())
-            if path.is_file() and path.suffix.lower() in ('.md', '.txt', '.tsv', '.jsonl'):
-                paths.add(path.relative_to(root).as_posix())
-    return sorted(paths)
+    paths = {path.name for path in root.iterdir() if path.is_file() or path.is_symlink()}
+    for docs in root.iterdir():
+        if docs.name.casefold() == 'docs' and docs.is_dir() and not docs.is_symlink():
+            paths.update(path.relative_to(root).as_posix() for path in docs.rglob('*')
+                         if path.is_file() or path.is_symlink())
+    return sorted(paths - set(sources))
+
+
+def path_summary(paths):
+    paths = sorted(paths)
+    # Full names live in the external plan; previews stay bounded even for huge trees.
+    preview = [path[:160] for path in paths[:8]]
+    return dict(count=len(paths), paths=preview,
+                truncated=len(paths) > 8 or any(len(path) > 160 for path in paths[:8]))
+
+
+def migrated_config(raw, schema):
+    # v2 kickoff template:26-40 owns Current Sprint; preserve every other section.
+    lines = raw.decode('utf-8').splitlines(keepends=True)
+    result, current, notes = [], False, False
+    for line in lines:
+        if re.match(r'^## Current Sprint(?:\s|$)', line):
+            current = True
+            notes = False
+            result.append('## Lifecycle state\nUse lifecycle.py context for current state.\n')
+        elif re.match(r'^#{1,2} ', line):
+            current = False
+            notes = False
+            result.append(line)
+        else:
+            if re.match(r'^#{1,6}\s', line) or re.match(r'^[A-Za-z_][A-Za-z0-9_]*=', line):
+                notes = line.startswith('REPO_NOTES=')
+            if not current or notes:
+                result.append(line)
+    retained = ''.join(result).encode()
+    return retained + (b'\n' if retained and not retained.endswith(b'\n') else b'') + schema
 
 
 def source_data(root, rel):
@@ -610,18 +673,61 @@ def source_data(root, rel):
     return raw, lines, hits
 
 
-def migration_plan(root):
+def migration_plan(root, extra_sources=()):
     require(not safe(root, '.cykl/lock').exists(), 'writer lock present')
     require(not safe(root, 'docs/NOW.md').exists(), 'already v3; use original approved plan for retry')
     sources = {}
-    for rel in source_paths(root):
+    for rel in sorted(set(source_paths(root)) | set(extra_sources)):
+        require(Path(rel).as_posix() == rel and not any(p.startswith('.') for p in Path(rel).parts),
+                'noncanonical/hidden migration source forbidden')
         raw, lines, hits = source_data(root, rel)
         sources[rel] = dict(sha256=sha(raw), bytes=len(raw), lines=len(lines), secret_hits=hits,
             acknowledgements={}, ranges=[dict(start=1, end=len(lines), disposition='unresolved', reason='')] if lines else [])
     require(sources, 'no legacy sources')
-    return dict(schema=3, review={key: '' for key in REVIEW_KEYS}, sources=sources,
+    plan = dict(schema=3, extra_sources=sorted(set(extra_sources)), keep=keep_paths(root, sources),
+                review={key: '' for key in REVIEW_KEYS}, sources=sources,
                 draft=dict(repo='example/project', branch='UNKNOWN', goal='REVIEW REQUIRED', position='Offline migration',
                            next='Review migrated facts', preserve=[], work={}, risks=[], references=[]), replacements={})
+    # Unresolved ranges assume archiving; reviewers must update change after range edits.
+    paths = set(sources) | {'PROJECT_CONFIG.md', 'docs/NOW.md', 'docs/DECISIONS.md',
+                            'docs/archive/migration.jsonl'}
+    for rel, spec in sources.items():
+        _, lines, _ = source_data(root, rel)
+        for entry in spec['ranges']:
+            paths.update(part['path'] for part, _ in archive_chunks(rel, lines, entry))
+    migration_write_set(root, paths, set(sources))
+    plan['change'] = sorted(paths)
+    return plan
+
+
+def archive_chunks(rel, lines, entry):
+    start, end = entry['start'], entry['end']
+    chunk, first = '', start
+    for number in range(start, end + 1):
+        line = lines[number - 1]
+        bounded(line, 65536, 'archive source line')
+        if chunk and len((chunk + line).encode()) > 65536:
+            path = 'docs/archive/' + sha(rel.encode())[:16] + '-' + str(first) + '.txt'
+            yield dict(start=first, end=number - 1, path=path, sha256=sha(chunk.encode()),
+                       reason=entry['reason']), chunk.encode()
+            chunk, first = '', number
+        chunk += line
+    path = 'docs/archive/' + sha(rel.encode())[:16] + '-' + str(first) + '.txt'
+    yield dict(start=first, end=end, path=path, sha256=sha(chunk.encode()),
+               reason=entry['reason']), chunk.encode()
+
+
+def migration_write_set(root, paths, selected):
+    for rel in paths:
+        path = safe(root, rel)
+        for parent in Path(rel).parents:
+            ancestor = Path(root) / parent
+            require(not ancestor.exists() or ancestor.is_dir(),
+                    'non-directory ancestor of migration write: ' + parent.as_posix())
+        require(rel in selected or rel in ('PROJECT_CONFIG.md', 'docs/NOW.md', 'docs/DECISIONS.md')
+                or rel.startswith('docs/archive/'), 'unselected migration write: ' + rel)
+        require(rel in selected or not path.exists(),
+                'unselected file would change; explicit opt-in required: ' + rel)
 
 
 def manifest_rows(root):
@@ -678,12 +784,14 @@ def external_destination(root, destination):
     return destination
 
 
-def write_migration_plan(root, output=None):
-    plan = migration_plan(root)
+def write_migration_plan(root, output=None, extra_sources=()):
+    plan = migration_plan(root, extra_sources)
     raw = (dumps(plan) + '\n').encode()
     output = output or Path(tempfile.gettempdir()).resolve() / ('cykl-plan-' + str(uuid.uuid4()) + '.json')
     output = external_destination(root, output)
-    result = bounded(dumps(dict(plan=str(output), sha256=sha(raw), sources=len(plan['sources']))) + '\n')
+    result = bounded(dumps(dict(plan=str(output), sha256=sha(raw), sources=len(plan['sources']),
+        change=path_summary(plan['change']),
+        keep=path_summary(plan['keep']))) + '\n')
     # Exclusive creation preserves an existing reviewed plan even if another writer races us.
     with output.open('xb') as handle:
         handle.write(raw)
@@ -701,6 +809,7 @@ def rollback(root, destination):
         count = 0
         for row in manifest_rows(root):
             if row['type'] == 'source':
+                safe(root, row['source'])
                 path = safe(stage, row['source'])
                 require(not path.exists(), 'duplicate rollback source')
                 durable(path, reconstruct(root, row))
@@ -731,11 +840,34 @@ def migrate(root, plan=None, apply=False):
         return {'status': 'already applied', 'plan_sha256': plan_hash}
     require(plan.get('schema') == 3, 'migration schema')
     require(all(isinstance(plan.get('review', {}).get(key), str) and plan['review'][key].strip() for key in REVIEW_KEYS), 'review checklist incomplete')
-    require(set(source_paths(root)) <= set(plan['sources']), 'source inventory incomplete')
+    selected = set(plan['sources'])
+    extras = plan.get('extra_sources', [])
+    require(isinstance(extras, list) and all(isinstance(rel, str) for rel in extras), 'extra_sources list required')
+    replacements = plan.get('replacements', {})
+    for rel in selected | set(extras) | set(replacements) | set(plan['draft'].get('files', {})):
+        safe(root, rel)
+    require(set(replacements) <= selected, 'replacement requires reviewed source')
+    require(set(source_paths(root)) <= selected, 'source inventory incomplete')
+    require(set(extras) <= selected, 'extra source missing review')
+    require(selected <= set(source_paths(root)) | set(extras) | set(replacements),
+            'non-state source requires explicit per-file opt-in')
+    declared = plan.get('change')
+    require(isinstance(declared, list) and all(isinstance(rel, str) for rel in declared),
+            'plan change must be a full path list')
+    for rel in declared:
+        safe(root, rel)
+        require(Path(rel).as_posix() == rel, 'noncanonical plan change path')
+    files = {rel: content for rel, content in plan['draft'].get('files', {}).items()
+             if rel not in LEGACY_STATE_PATHS}
+    require(set(files) <= selected, 'unselected draft.files write requires explicit opt-in')
+    for rel in set(files) & set(replacements):
+        require(files[rel].encode() == replacements[rel].encode(),
+                'draft.files conflicts with reviewed replacement: ' + rel)
     changes, rows, work, ids = {}, [], dict(plan['draft']['work']), set(plan['draft']['work'])
     manifest = [dict(type='migration', plan_sha256=plan_hash, review=plan['review'])]
     for rel, spec in plan['sources'].items():
-        require(not any(part.startswith('.') for part in Path(rel).parts), 'hidden migration source forbidden')
+        require(Path(rel).as_posix() == rel and not any(part.startswith('.') for part in Path(rel).parts),
+                'noncanonical/hidden migration source forbidden')
         raw, lines, hits = source_data(root, rel)
         require(sha(raw) == spec['sha256'] and len(raw) == spec['bytes'] and len(lines) == spec['lines'], 'source hash changed: ' + rel)
         for hit in hits:
@@ -760,39 +892,41 @@ def migrate(root, plan=None, apply=False):
                                      scope=entry.get('scope', 'archived'), supersedes='-', text=text))
                 parts.append(part)
             elif disposition == 'archived':
-                chunk, first = '', start
-                for number in range(start, end + 1):
-                    line = lines[number - 1]
-                    bounded(line, 65536, 'archive source line')
-                    if chunk and len((chunk + line).encode()) > 65536:
-                        path = 'docs/archive/' + sha(rel.encode())[:16] + '-' + str(first) + '.txt'
-                        changes[path] = chunk.encode()
-                        parts.append(dict(start=first, end=number - 1, path=path, sha256=sha(chunk.encode()), reason=entry['reason']))
-                        chunk, first = '', number
-                    chunk += line
-                path = 'docs/archive/' + sha(rel.encode())[:16] + '-' + str(first) + '.txt'
-                changes[path] = chunk.encode()
-                parts.append(dict(start=first, end=end, path=path, sha256=sha(chunk.encode()), reason=entry['reason']))
+                for part, raw_chunk in archive_chunks(rel, lines, entry):
+                    changes[part['path']] = raw_chunk
+                    parts.append(part)
             else:
                 raise ValueError('unresolved range disposition')
             cursor = end + 1
         require(cursor == len(lines) + 1, 'source range coverage incomplete')
         manifest.append(dict(type='source', source=rel, sha256=sha(raw), bytes=len(raw), lines=len(lines),
                              acknowledgements=spec.get('acknowledgements', {}), parts=parts))
-        replacement = plan.get('replacements', {}).get(rel)
+        replacement = replacements.get(rel)
         if Path(rel).name in ('AGENTS.md', 'CLAUDE.md'):
             require(replacement, 'instruction replacement required: ' + rel)
         changes[rel] = (replacement if replacement is not None else '# Migrated\n\nUse lifecycle.py context for current state; archive show for original lines.\n').encode()
-    draft = dict(plan['draft'], work=work, decisions=render_decisions(rows))
+    draft = dict(plan['draft'], files=files, work=work, decisions=render_decisions(rows))
     # Use a clean root solely to render the initial checkpoint; never parse legacy state as v3.
     with tempfile.TemporaryDirectory() as temp:
         generated, card, _ = draft_changes(Path(temp), draft, 'absent')
+    if 'PROJECT_CONFIG.md' in selected:
+        generated['PROJECT_CONFIG.md'] = (replacements['PROJECT_CONFIG.md'].encode()
+            if 'PROJECT_CONFIG.md' in replacements else
+            migrated_config(safe(root, 'PROJECT_CONFIG.md').read_bytes(), generated['PROJECT_CONFIG.md']))
+    for rel in generated:
+        if Path(rel).name in ('AGENTS.md', 'CLAUDE.md'):
+            require(rel in replacements and generated[rel] == replacements[rel].encode(),
+                    'instruction replacement required: ' + rel)
     changes.update(generated)
     changes['docs/archive/migration.jsonl'] = ''.join(dumps(row) + '\n' for row in manifest).encode()
     def preflight():
-        require(set(source_paths(root)) <= set(plan['sources']), 'source inventory changed')
+        require(set(declared) == set(changes),
+                'plan change does not match actual write set; review full change list after range edits')
+        require(set(source_paths(root)) <= selected, 'source inventory changed')
+        migration_write_set(root, changes, selected)
         for rel, spec in plan['sources'].items():
             require(file_hash(safe(root, rel)) == spec['sha256'], 'source hash changed: ' + rel)
+    preflight()
     with tempfile.TemporaryDirectory() as temp:
         stage = Path(temp)
         for rel, raw in changes.items():
@@ -804,7 +938,8 @@ def migrate(root, plan=None, apply=False):
                     target = state['work'].get(part['id']) if part['id'][0] in 'OA' else decision_rows(stage)[part['id']]['text']
                     require(target == part['text'], 'active extraction mismatch')
     result = {'status': 'applied' if apply else 'verified dry-run', 'plan_sha256': plan_hash,
-              'sources': len(plan['sources']), 'active_facts': len(ids), 'review': plan['review']}
+              'sources': len(plan['sources']), 'active_facts': len(ids), 'review': plan['review'],
+              'change': path_summary(changes), 'keep': path_summary(keep_paths(root, changes))}
     bounded(dumps(result) + '\n')
     if apply:
         promote(root, changes, preflight)
@@ -840,6 +975,7 @@ def main():
         elif name == 'migrate':
             p.add_argument('--plan', type=Path)
             p.add_argument('--output', type=Path)
+            p.add_argument('--extra-source', action='append', default=[])
             p.add_argument('--dest', type=Path)
             group = p.add_mutually_exclusive_group()
             group.add_argument('--apply', action='store_true')
@@ -886,16 +1022,16 @@ def main():
                 result = dumps({'decisions': len(decision_rows(args.root))}) + '\n'
         elif args.command == 'migrate':
             if args.rollback:
-                require(args.dest and not args.plan and not args.output, '--rollback requires --dest only')
+                require(args.dest and not args.plan and not args.output and not args.extra_source, '--rollback requires --dest only')
                 result = rollback(args.root, args.dest)
             else:
                 require(not args.dest, '--dest requires --rollback')
                 if args.plan:
-                    require(not args.output, '--output is only for inventory')
+                    require(not args.output and not args.extra_source, '--output/--extra-source are only for inventory')
                     result = dumps(migrate(args.root, loads(args.plan.read_text()), args.apply)) + '\n'
                 else:
                     require(not args.apply, '--apply requires reviewed --plan')
-                    result = write_migration_plan(args.root, args.output)
+                    result = write_migration_plan(args.root, args.output, args.extra_source)
         elif args.command == 'recover':
             result = recover(args.root)
         else:

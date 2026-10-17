@@ -1,4 +1,4 @@
-# cykl-lifecycle 3.0.0
+# cykl-lifecycle 3.0.1
 
 Seven English skills for project memory across sessions. Canonical names stay `cykl-*`.
 One stdlib Python script writes bounded checkpoints; GitHub remains task/release authority.
@@ -66,6 +66,23 @@ outside this enforcement boundary.
 
 ## Migration from v2 (breaking)
 
+**Do not run 3.0.0 `migrate --apply` on a project with regular documentation.**
+Upgrade to 3.0.1 and generate a new plan. The 3.0.0 inventory included ordinary docs.
+
+Migration is **keep-by-default**. The closed default source list is `PROJECT_CONFIG.md`,
+`docs/HANDOFF.md`, `docs/ROADMAP.md`, and `docs/LESSONS_CANON.md`, when present.
+[Exact v2 provenance](docs/migration-scope-v301.md) explains each entry and why ADRs,
+registers, journals, reports, specs, runbooks and existing archives are excluded.
+All other documentation and root `AGENTS.md` / `CLAUDE.md` stay byte-identical: no stub,
+no archive copy, no required source entry. The plan's `keep` list is informational;
+new or changed ordinary docs do not invalidate the source inventory.
+
+In CONFIG, only `## Current Sprint ...` through the next level-1/2 heading is replaced;
+static sections and `REPO_NOTES=` lines are preserved. The v3 schema fields are appended.
+The complete original CONFIG is reconstructable. An unrecognized section stays intact.
+If preservation exceeds the existing 2,048-byte CONFIG cap, migration refuses to apply;
+review `replacements["PROJECT_CONFIG.md"]` explicitly, including `CYKL_SCHEMA=3`.
+
 Upgrade **every** installed writer first. `porzadek.py` now always exits 2 without writes.
 There is no automatic cleanup on startup and no automatic “newest Snapshot” guess.
 Work on a reviewed copy; never migrate private project data into this public skills repo.
@@ -78,9 +95,25 @@ python3 "$LIFECYCLE" migrate --root /path/to/project --plan /path/outside/projec
 ```
 
 Inventory writes the full plan to that new file, never into the project, and prints only
-its path, SHA-256 and source count. Without `--output`, it creates a unique plan in the
+its path, SHA-256, source count and change/keep counts with bounded path previews.
+Each preview includes a `truncated` flag; full kept paths and source entries are in the plan. Without `--output`, it creates a unique plan in the
 system temporary directory. Existing outputs and symlink paths are refused. Plan files
 are not subject to the helper stdout cap. A reviewed `--plan` without `--apply` is read-only.
+
+To migrate an additional file, opt in by exact project-relative path during inventory:
+
+```sh
+python3 "$LIFECYCLE" migrate --root /path/to/project --output /path/outside/project/plan.json --extra-source docs/journal.txt
+```
+
+Repeat `--extra-source` for each file. It populates `extra_sources` and creates the
+required `sources[PATH]` hash/range entry for review. When editing a plan manually,
+both entries are required; listing an ordinary file in `sources` alone is rejected.
+An explicit `replacements[PATH]` also opts in that reviewed source. To withdraw an opt-in,
+remove its `extra_sources`, `sources` and replacement entries; it returns to keep.
+Instruction files require a nonempty bounded replacement even with `extra_sources`.
+Generated v3 files that collide with unselected documents block apply until explicitly
+selected and reviewed; `draft.files` cannot bypass this protection.
 
 The initial plan has unresolved source ranges and checklist entries. For each source,
 partition every line exactly once. Each range needs `start`, `end`, `disposition` and
@@ -95,8 +128,8 @@ DECISIONS. A-* also require matching attempt/packet files in draft.files. Histor
 ranges use `disposition: "archived"`. D/L scope defaults to `archived`; promote a binding
 rule explicitly to `project`. Set repo/branch/goal in draft. Fill all review checklist
 entries with evidence: active facts, ambiguous snapshots, issue URLs, readers, writers,
-privacy. Existing AGENTS/CLAUDE files require explicit bounded `replacements` preserving
-applicable instructions. Known secret hits need `acknowledgements: {"line": "ACK-review-id"}`;
+privacy. Only selected AGENTS/CLAUDE files require explicit bounded `replacements` preserving
+applicable instructions; otherwise they remain untouched. Known secret hits need `acknowledgements: {"line": "ACK-review-id"}`;
 review hashes and privacy manually too. The scanner cannot prove publication safety.
 
 Apply verifies all hashes and extraction before replacing sources. Only remaining history

@@ -2,7 +2,7 @@
 name: cykl-zamknij
 description: "Close a project session durably; /zamknij; English alias: /close."
 ---
-<!-- cykl-lifecycle v3.0.0 -->
+<!-- cykl-lifecycle v3.0.1 -->
 
 # cykl-zamknij
 

@@ -270,6 +270,9 @@ class LifecycleTests(unittest.TestCase):
             dict(start=1, end=1, disposition='active', id='O-1', reason='still required'),
             dict(start=2, end=2, disposition='archived', reason='historical'),
             dict(start=3, end=3, disposition='active', id='D-1', reason='binding', scope='project')]
+        prefix = 'docs/archive/' + self.lc.sha(b'docs/HANDOFF.md')[:16]
+        plan['change'].remove(prefix + '-1.txt')
+        plan['change'].append(prefix + '-2.txt')
         return root, source, plan
 
     def test_migration_extracts_active_facts_and_reconstructs(self):
@@ -286,6 +289,626 @@ class LifecycleTests(unittest.TestCase):
         snapshot = (root / 'docs/NOW.md').read_bytes()
         self.lc.migrate(root, plan, apply=True)
         self.assertEqual(snapshot, (root / 'docs/NOW.md').read_bytes())
+
+    def test_migration_keeps_ordinary_docs_and_restores_only_selected_sources(self):
+        root, source, _ = self.migration_plan()
+        notes = b'REPO_NOTES=Keep this note\r\n  wrapped detail with Unicode \xc5\xbc\r\n\r\n'
+        states = {
+            'PROJECT_CONFIG.md': b'## Identity\r\nOWNER_NAME=Owner\r\n## Current Sprint (live state)\r\n' + notes + b'CURRENT_SPRINT=old\r\nDiscard sprint continuation\r\n## Privacy\r\nKeep local\r\n',
+            'docs/HANDOFF.md': source,
+            'docs/ROADMAP.md': b'Old roadmap\n',
+            'docs/LESSONS_CANON.md': b'Old lesson\n',
+        }
+        for rel, raw in states.items():
+            (root / rel).write_bytes(raw)
+        for i in range(120):
+            rel = 'docs/' + ('reports', 'specs', 'adr', 'runbooks')[i % 4] + '/' + str(i) + '.md'
+            (root / rel).parent.mkdir(exist_ok=True)
+            (root / rel).write_bytes(('Ordinary document %d\r\n' % i).encode())
+        for rel in ('AGENTS.md', 'CLAUDE.md', 'docs/journal.jsonl', 'docs/register.tsv', 'docs/notes.txt'):
+            (root / rel).write_bytes(b'Keep exactly\r\n')
+        (root / 'docs/binary.dat').write_bytes(b'\xff\x00')
+        before = {p.relative_to(root).as_posix(): self.lc.sha(p.read_bytes())
+                  for p in root.rglob('*') if p.is_file() and p.relative_to(root).as_posix() not in states}
+        plan = self.lc.migration_plan(root)
+        self.assertEqual(set(plan['sources']), set(states))
+        self.assertEqual(set(plan['keep']), set(before))
+        plan['review'] = {key: 'reviewed fixture' for key in self.lc.REVIEW_KEYS}
+        plan['draft'] = self.draft()
+        for spec in plan['sources'].values():
+            for entry in spec['ranges']:
+                entry.update(disposition='archived', reason='reviewed history')
+        # Kept files are informational, never a mandatory source inventory.
+        plan.pop('keep')
+        (root / 'docs/new-report.md').write_bytes(b'Created after inventory')
+        before['docs/new-report.md'] = self.lc.sha(b'Created after inventory')
+        reviewed = self.root / 'reviewed.json'
+        reviewed.write_text(json.dumps(plan))
+        proc = subprocess.run([sys.executable, '-B', str(SCRIPT), 'migrate', '--root', str(root),
+                               '--plan', str(reviewed), '--apply'], capture_output=True)
+        self.assertEqual(proc.returncode, 0, proc.stderr.decode())
+        result = json.loads(proc.stdout)
+        self.assertEqual(result['keep']['count'], len(before))
+        self.assertIn('docs/HANDOFF.md', result['change']['paths'])
+        self.assertEqual(before, {rel: self.lc.sha((root / rel).read_bytes()) for rel in before})
+        config = (root / 'PROJECT_CONFIG.md').read_bytes()
+        self.assertTrue(config.startswith(b'## Identity\r\nOWNER_NAME=Owner\r\n'))
+        self.assertIn(b'## Privacy\r\nKeep local\r\n', config)
+        self.assertNotIn(b'CURRENT_SPRINT=old', config)
+        self.assertIn(b'CYKL_SCHEMA=3', config)
+        self.assertIn(notes, config)
+        self.assertNotIn(b'Discard sprint continuation', config)
+        after_paths = {p.relative_to(root).as_posix() for p in root.rglob('*') if p.is_file()}
+        new_paths = after_paths - set(before) - set(states)
+        self.assertTrue({'docs/NOW.md', 'docs/DECISIONS.md'} <= new_paths)
+        self.assertTrue(all(rel in {'docs/NOW.md', 'docs/DECISIONS.md'}
+                            or rel.startswith('docs/archive/') for rel in new_paths), new_paths)
+        for rel in states.keys() - {'PROJECT_CONFIG.md'}:
+            self.assertTrue((root / rel).read_bytes().startswith(b'# Migrated'))
+        rows = [row for row in self.lc.manifest_rows(root) if row['type'] == 'source']
+        self.assertEqual({row['source'] for row in rows}, set(states))
+        dest = self.root / 'restored'
+        self.lc.rollback(root, dest)
+        self.assertEqual({p.relative_to(dest).as_posix(): p.read_bytes()
+                          for p in dest.rglob('*') if p.is_file()}, states)
+        self.assertEqual(before, {rel: self.lc.sha((root / rel).read_bytes()) for rel in before})
+
+    def test_migration_case_variant_documents_are_kept_after_cli_apply(self):
+        for variant in ('docs/handoff.md', 'docs/Handoff.md', 'docs/roadmap.md',
+                        'docs/Lessons_Canon.md', 'Docs/HANDOFF.md'):
+            with self.subTest(variant=variant), tempfile.TemporaryDirectory(dir=self.root) as temp:
+                root = Path(temp)
+                (root / variant).parent.mkdir(parents=True, exist_ok=True)
+                original = b'Ordinary case-variant document\r\n'
+                (root / variant).write_bytes(original)
+                (root / 'PROJECT_CONFIG.md').write_text('OWNER_NAME=Owner\n')
+                if variant == 'Docs/HANDOFF.md' and (root / 'docs').exists():
+                    with self.assertRaisesRegex(ValueError, 'on-disk.*Docs/'):
+                        self.lc.migration_plan(root)
+                    self.assertEqual((root / variant).read_bytes(), original)
+                    self.assertEqual(self.lc.sha((root / variant).read_bytes()), self.lc.sha(original))
+                    self.assertEqual(self.lc.source_paths(root), ['PROJECT_CONFIG.md'])
+                    self.assertIn(variant, self.lc.keep_paths(root, ['PROJECT_CONFIG.md']))
+                    continue
+                plan = self.lc.migration_plan(root)
+                self.assertEqual(set(plan['sources']), {'PROJECT_CONFIG.md'})
+                self.assertIn(variant, plan['keep'])
+                plan['review'] = {key: 'reviewed' for key in self.lc.REVIEW_KEYS}
+                for spec in plan['sources'].values():
+                    for entry in spec['ranges']:
+                        entry.update(disposition='archived', reason='history')
+                reviewed = self.root / 'reviewed-case.json'
+                reviewed.write_text(json.dumps(plan))
+                proc = subprocess.run([sys.executable, '-B', str(SCRIPT), 'migrate',
+                    '--root', str(root), '--plan', str(reviewed), '--apply'], capture_output=True)
+                self.assertEqual(proc.returncode, 0, proc.stderr.decode())
+                self.assertEqual((root / variant).read_bytes(), original)
+                self.assertEqual(self.lc.sha((root / variant).read_bytes()), self.lc.sha(original))
+                self.assertIn(variant, json.loads(proc.stdout)['keep']['paths'])
+
+    def test_migration_case_variant_config_is_not_a_source_or_overwritten(self):
+        root, _, plan = self.migration_plan()
+        original = b'Ordinary config-named document\r\n'
+        (root / 'project_config.md').write_bytes(original)
+        self.assertEqual(self.lc.source_paths(root), ['docs/HANDOFF.md'])
+        self.assertIn('project_config.md', self.lc.keep_paths(root, plan['sources']))
+        if (root / 'PROJECT_CONFIG.md').exists():
+            with self.assertRaisesRegex(ValueError, 'on-disk.*project_config.md'):
+                self.lc.migration_plan(root)
+            with self.assertRaisesRegex(ValueError, 'on-disk.*project_config.md'):
+                self.lc.migrate(root, plan, apply=True)
+        else:
+            self.lc.migrate(root, plan, apply=True)
+        self.assertEqual((root / 'project_config.md').read_bytes(), original)
+
+    def test_migration_rejects_unselected_new_draft_paths(self):
+        template, _, plan = self.migration_plan()
+        for files in ({'docs/issues/x.md': 'Issue'}, {'docs/decisions/x.md': 'Decision'},
+                      self.attempt_files(), {'docs/queue/results/x.md': 'Result'},
+                      {'docs/sync/status.json': '{}'}, {'docs/sync/outbox/x.json': '{}'}):
+            with self.subTest(paths=list(files)), tempfile.TemporaryDirectory(dir=self.root) as temp:
+                root = Path(temp) / 'case'
+                shutil.copytree(template, root)
+                before = {p.relative_to(root): p.read_bytes() for p in root.rglob('*') if p.is_file()}
+                plan['draft']['files'] = files
+                plan['draft']['work'] = {'A-1': 'Task'} if 'docs/queue/T-1.json' in files else {}
+                with self.assertRaisesRegex(ValueError, 'unselected'):
+                    self.lc.migrate(root, plan, apply=True)
+                self.assertEqual(before, {p.relative_to(root): p.read_bytes()
+                                         for p in root.rglob('*') if p.is_file()})
+
+    def test_migration_canonical_extra_source_cannot_select_case_variant(self):
+        for canonical, variant in (('PROJECT_CONFIG.md', 'project_config.md'),
+                                   ('docs/DECISIONS.md', 'docs/decisions.md'),
+                                   ('docs/HANDOFF.md', 'docs/handoff.md'),
+                                   ('docs/ROADMAP.md', 'docs/roadmap.md')):
+            with self.subTest(path=variant), tempfile.TemporaryDirectory(dir=self.root) as temp:
+                root = Path(temp) / 'legacy'
+                (root / 'docs').mkdir(parents=True)
+                state = 'PROJECT_CONFIG.md' if canonical == 'docs/HANDOFF.md' else 'docs/HANDOFF.md'
+                (root / state).write_text('Legacy state\n')
+                (root / variant).write_bytes(b'Ordinary document\r\n')
+                before = {p.relative_to(root): self.lc.sha(p.read_bytes())
+                          for p in root.rglob('*') if p.is_file()}
+                output = Path(temp) / 'plan.json'
+                proc = subprocess.run([sys.executable, '-B', str(SCRIPT), 'migrate',
+                    '--root', str(root), '--output', str(output), '--extra-source', canonical],
+                    capture_output=True)
+                self.assertNotEqual(proc.returncode, 0)
+                self.assertFalse(output.exists())
+                if (root / canonical).exists():
+                    self.assertIn(variant, proc.stderr.decode())
+                    self.assertNotIn('explicit opt-in required: ' + canonical, proc.stderr.decode())
+                self.assertEqual(before, {p.relative_to(root): self.lc.sha(p.read_bytes())
+                                         for p in root.rglob('*') if p.is_file()})
+
+    def test_migration_plan_rejects_sources_renamed_to_case_variants(self):
+        for canonical, variant in (('PROJECT_CONFIG.md', 'project_config.md'),
+                                   ('docs/DECISIONS.md', 'docs/decisions.md'),
+                                   ('docs/HANDOFF.md', 'docs/handoff.md')):
+            for authority in ('extra_sources', 'replacements'):
+                with self.subTest(path=variant, authority=authority), tempfile.TemporaryDirectory(dir=self.root) as temp:
+                    root = Path(temp)
+                    (root / 'docs').mkdir()
+                    (root / 'docs/HANDOFF.md').write_text('Legacy state\n')
+                    (root / canonical).write_text('Reviewed source\n')
+                    plan = self.lc.migration_plan(root, extra_sources=[canonical])
+                    plan['review'] = {key: 'reviewed' for key in self.lc.REVIEW_KEYS}
+                    for spec in plan['sources'].values():
+                        for entry in spec['ranges']:
+                            entry.update(disposition='archived', reason='history')
+                    if authority == 'replacements':
+                        plan['extra_sources'] = []
+                        plan['replacements'][canonical] = ('CYKL_SCHEMA=3\n' if canonical == 'PROJECT_CONFIG.md'
+                                                           else self.lc.INDEX_HEADER)
+                    (root / canonical).rename(root / variant)
+                    before = {p.relative_to(root): p.read_bytes() for p in root.rglob('*') if p.is_file()}
+                    for apply in (False, True):
+                        with self.assertRaises((ValueError, FileNotFoundError)):
+                            self.lc.migrate(root, plan, apply=apply)
+                        self.assertEqual(before, {p.relative_to(root): p.read_bytes()
+                                                 for p in root.rglob('*') if p.is_file()})
+
+    def test_migration_case_variants_are_not_managed_or_capped(self):
+        root = self.root / 'legacy'
+        (root / 'docs').mkdir(parents=True)
+        (root / 'PROJECT_CONFIG.md').write_text('OWNER_NAME=Owner\n')
+        kept = {'docs/handoff.md': b'x' * 1024,
+                'docs/roadmap.md': b'x' * 8192,
+                'docs/lessons_canon.md': b'<<<<<<< ordinary example\n=======\n>>>>>>> example\n'}
+        for rel, raw in kept.items():
+            (root / rel).write_bytes(raw)
+        self.assertEqual(self.lc.managed(root), ['PROJECT_CONFIG.md'])
+        plan = self.lc.migration_plan(root)
+        plan['review'] = {key: 'reviewed' for key in self.lc.REVIEW_KEYS}
+        for entry in plan['sources']['PROJECT_CONFIG.md']['ranges']:
+            entry.update(disposition='archived', reason='history')
+        reviewed = self.root / 'plan.json'
+        command = [sys.executable, '-B', str(SCRIPT), 'migrate', '--root', str(root),
+                   '--plan', str(reviewed), '--apply']
+        plan['draft']['goal'] = 'x' * 4096
+        reviewed.write_text(json.dumps(plan))
+        failed = subprocess.run(command, capture_output=True)
+        self.assertNotEqual(failed.returncode, 0)
+        self.assertEqual({rel: self.lc.sha(raw) for rel, raw in kept.items()},
+                         {rel: self.lc.sha((root / rel).read_bytes()) for rel in kept})
+        plan['draft']['goal'] = 'Reviewed migration'
+        reviewed.write_text(json.dumps(plan))
+        applied = subprocess.run(command, capture_output=True)
+        self.assertEqual(applied.returncode, 0, applied.stderr.decode())
+        self.lc.check(root)
+        self.lc.context(root)
+        self.assertEqual({rel: self.lc.sha(raw) for rel, raw in kept.items()},
+                         {rel: self.lc.sha((root / rel).read_bytes()) for rel in kept})
+        self.assertTrue(set(kept) <= set(self.lc.keep_paths(root, plan['sources'])))
+
+    def test_migration_change_set_must_match_edited_ranges(self):
+        root, source, plan = self.migration_plan()
+        plan['sources']['docs/HANDOFF.md']['ranges'] = [
+            dict(start=1, end=1, disposition='archived', reason='first'),
+            dict(start=2, end=3, disposition='archived', reason='rest')]
+        before = {p.relative_to(root): p.read_bytes() for p in root.rglob('*') if p.is_file()}
+        for apply in (False, True):
+            with self.subTest(apply=apply), self.assertRaisesRegex(ValueError, 'change.*write set'):
+                self.lc.migrate(root, plan, apply=apply)
+            self.assertEqual(before, {p.relative_to(root): p.read_bytes() for p in root.rglob('*') if p.is_file()})
+        first = 'docs/archive/' + self.lc.sha(b'docs/HANDOFF.md')[:16] + '-1.txt'
+        plan['change'].append(first)
+        self.lc.migrate(root, plan, apply=True)
+        self.assertEqual(set(plan['change']), {p.relative_to(root).as_posix()
+                                             for p in root.rglob('*') if p.is_file()})
+        self.assertEqual(self.lc.archive_show(root, 'docs/HANDOFF.md', 1, 3).encode(), source)
+
+    def test_migration_change_set_rejects_missing_extra_and_invalid_declarations(self):
+        root, _, plan = self.migration_plan()
+        before = {p.relative_to(root): p.read_bytes() for p in root.rglob('*') if p.is_file()}
+        for declared in (None, 'docs/HANDOFF.md', [], plan['change'] + ['docs/unused.md'],
+                         plan['change'][:-1], plan['change'] + [123]):
+            for apply in (False, True):
+                with self.subTest(declared=declared, apply=apply), self.assertRaisesRegex(ValueError, 'change'):
+                    self.lc.migrate(root, dict(plan, change=declared), apply=apply)
+                self.assertEqual(before, {p.relative_to(root): p.read_bytes() for p in root.rglob('*') if p.is_file()})
+
+    def test_migration_draft_and_replacement_must_agree(self):
+        root, _, _ = self.migration_plan()
+        rel = 'docs/issues/journal.md'
+        (root / rel).parent.mkdir()
+        (root / rel).write_text('Original journal\n')
+        plan = self.lc.migration_plan(root, extra_sources=[rel])
+        plan['review'] = {key: 'reviewed' for key in self.lc.REVIEW_KEYS}
+        for spec in plan['sources'].values():
+            for entry in spec['ranges']:
+                entry.update(disposition='archived', reason='history')
+        plan['replacements'][rel] = 'Reviewed replacement\n'
+        plan['draft']['files'] = {rel: 'Different draft\n'}
+        before = {p.relative_to(root): p.read_bytes() for p in root.rglob('*') if p.is_file()}
+        for apply in (False, True):
+            with self.assertRaisesRegex(ValueError, 'draft.*replacement'):
+                self.lc.migrate(root, plan, apply=apply)
+            self.assertEqual(before, {p.relative_to(root): p.read_bytes() for p in root.rglob('*') if p.is_file()})
+        plan['draft']['files'][rel] = plan['replacements'][rel]
+        self.lc.migrate(root, plan, apply=True)
+        self.assertEqual((root / rel).read_text(), plan['replacements'][rel])
+
+    def test_checkpoint_draft_cannot_write_through_case_alias(self):
+        root = self.init()
+        (root / 'docs/handoff.md').write_bytes(b'Ordinary kept document\n')
+        before = {p.relative_to(root): p.read_bytes() for p in root.rglob('*') if p.is_file()}
+        state = self.lc.check(root)
+        if (root / 'docs/HANDOFF.md').exists():
+            with self.assertRaisesRegex(ValueError, 'on-disk.*docs/handoff.md'):
+                self.lc.checkpoint(root, self.draft(files={'docs/HANDOFF.md': 'overwrite'}), state['content_sha256'])
+            self.assertEqual(before, {p.relative_to(root): p.read_bytes() for p in root.rglob('*') if p.is_file()})
+
+    def test_path_resolution_ignores_unrelated_symlinks(self):
+        root = self.root / 'paths'
+        (root / 'docs').mkdir(parents=True)
+        (root / 'docs/handoff.md').write_text('Ordinary document')
+        (root / 'alias').symlink_to(root / 'docs', target_is_directory=True)
+        (root / 'dangling').symlink_to(root / 'absent')
+        if (root / 'DOCS/HANDOFF.md').exists():
+            self.assertEqual(self.lc.resolve_entry_path(root, 'DOCS/HANDOFF.md'), root / 'docs/handoff.md')
+            with self.assertRaisesRegex(ValueError, 'on-disk.*docs/handoff.md'):
+                self.lc.safe(root, 'DOCS/HANDOFF.md')
+        with self.assertRaisesRegex(ValueError, 'symlink'):
+            self.lc.resolve_entry_path(root, 'alias/handoff.md')
+
+    def test_migration_validates_case_identity_in_every_plan_path_field(self):
+        root, _, original = self.migration_plan()
+        (root / 'docs/roadmap.md').write_text('Ordinary roadmap\n')
+        before = {p.relative_to(root): p.read_bytes() for p in root.rglob('*') if p.is_file()}
+        if (root / 'docs/ROADMAP.md').exists():
+            for field in ('extra_sources', 'replacements', 'change', 'files'):
+                with self.subTest(field=field):
+                    plan = json.loads(json.dumps(original))
+                    if field == 'files':
+                        plan['draft']['files'] = {'docs/ROADMAP.md': 'Ignored state draft'}
+                    elif field == 'replacements':
+                        plan[field]['docs/ROADMAP.md'] = 'Unreviewed replacement'
+                    else:
+                        plan[field].append('docs/ROADMAP.md')
+                    for apply in (False, True):
+                        with self.assertRaisesRegex(ValueError, 'on-disk.*docs/roadmap.md'):
+                            self.lc.migrate(root, plan, apply=apply)
+                        self.assertEqual(before, {p.relative_to(root): p.read_bytes()
+                                                 for p in root.rglob('*') if p.is_file()})
+
+    def test_migration_rechecks_case_alias_outputs_under_writer_lock(self):
+        root, source, plan = self.migration_plan()
+        promote = self.lc.promote
+        def introduce_alias(*args):
+            (root / 'docs/decisions.md').write_text('New kept document\n')
+            return promote(*args)
+        probe = self.root / 'CaseProbe'
+        probe.write_text('probe')
+        if (self.root / 'caseprobe').exists():
+            with patch.object(self.lc, 'promote', side_effect=introduce_alias):
+                with self.assertRaisesRegex(ValueError, 'on-disk.*docs/decisions.md'):
+                    self.lc.migrate(root, plan, apply=True)
+            self.assertEqual((root / 'docs/decisions.md').read_text(), 'New kept document\n')
+            self.assertEqual((root / 'docs/HANDOFF.md').read_bytes(), source)
+            self.assertFalse((root / 'docs/NOW.md').exists())
+            self.assertFalse((root / '.cykl/lock').exists())
+
+    def test_migration_exact_case_variant_opt_in_preserves_rollback_spelling(self):
+        root, _, _ = self.migration_plan()
+        (root / 'docs/HANDOFF.md').rename(root / 'docs/handoff.md')
+        original = (root / 'docs/handoff.md').read_bytes()
+        plan = self.lc.migration_plan(root, extra_sources=['docs/handoff.md'])
+        self.assertNotIn('docs/handoff.md', plan['keep'])
+        plan['review'] = {key: 'reviewed' for key in self.lc.REVIEW_KEYS}
+        for entry in plan['sources']['docs/handoff.md']['ranges']:
+            entry.update(disposition='archived', reason='history')
+        self.lc.migrate(root, plan, apply=True)
+        destination = self.root / 'restore'
+        self.lc.rollback(root, destination)
+        self.assertEqual({p.relative_to(destination).as_posix(): p.read_bytes()
+                          for p in destination.rglob('*') if p.is_file()}, {'docs/handoff.md': original})
+        manifest = root / 'docs/archive/migration.jsonl'
+        rows = [json.loads(line) for line in manifest.read_text().splitlines()]
+        rows[1]['source'] = 'docs/HANDOFF.md'
+        manifest.write_text(''.join(json.dumps(row) + '\n' for row in rows))
+        if (root / 'docs/HANDOFF.md').exists():
+            with self.assertRaisesRegex(ValueError, 'on-disk.*docs/handoff.md'):
+                self.lc.rollback(root, self.root / 'bad-restore')
+            self.assertFalse((self.root / 'bad-restore').exists())
+
+    def test_migration_ignores_state_draft_files_and_honors_replacements(self):
+        root, _, _ = self.migration_plan()
+        (root / 'PROJECT_CONFIG.md').write_text('OWNER_NAME=Owner\n')
+        (root / 'docs/ROADMAP.md').write_text('Roadmap\n')
+        (root / 'docs/LESSONS_CANON.md').write_text('Lessons\n')
+        plan = self.lc.migration_plan(root)
+        plan['review'] = {key: 'reviewed' for key in self.lc.REVIEW_KEYS}
+        for spec in plan['sources'].values():
+            for entry in spec['ranges']:
+                entry.update(disposition='archived', reason='history')
+        plan['draft']['files'] = {rel: 'UNREVIEWED\n' for rel in (
+            'PROJECT_CONFIG.md', 'docs/HANDOFF.md', 'docs/ROADMAP.md', 'docs/LESSONS_CANON.md')}
+        plan['draft']['files']['PROJECT_CONFIG.md'] = 'CYKL_SCHEMA=3\nUNREVIEWED\n'
+        plan['replacements'] = {'docs/ROADMAP.md': 'Reviewed roadmap\n'}
+        self.lc.migrate(root, plan, apply=True)
+        self.assertTrue((root / 'docs/HANDOFF.md').read_text().startswith('# Migrated'))
+        self.assertTrue((root / 'docs/LESSONS_CANON.md').read_text().startswith('# Migrated'))
+        self.assertEqual((root / 'docs/ROADMAP.md').read_text(), 'Reviewed roadmap\n')
+        self.assertIn('OWNER_NAME=Owner', (root / 'PROJECT_CONFIG.md').read_text())
+        self.assertNotIn('UNREVIEWED', (root / 'PROJECT_CONFIG.md').read_text())
+
+    def test_migration_state_draft_files_cannot_create_missing_stubs(self):
+        root, _, plan = self.migration_plan()
+        plan['draft']['files'] = {'docs/ROADMAP.md': 'Injected roadmap',
+                                  'docs/LESSONS_CANON.md': 'Injected lesson',
+                                  'PROJECT_CONFIG.md': 'CYKL_SCHEMA=3\nINJECTED=1\n'}
+        self.lc.migrate(root, plan, apply=True)
+        self.assertFalse((root / 'docs/ROADMAP.md').exists())
+        self.assertFalse((root / 'docs/LESSONS_CANON.md').exists())
+        self.assertIn('CYKL_SCHEMA=3', (root / 'PROJECT_CONFIG.md').read_text())
+        self.assertNotIn('INJECTED=1', (root / 'PROJECT_CONFIG.md').read_text())
+
+    def test_migration_repo_notes_stop_at_keys_and_headings(self):
+        root, _, _ = self.migration_plan()
+        notes = b'REPO_NOTES=Keep first\r\nwrapped first\r\n'
+        more_notes = b'REPO_NOTES=Keep second\r\nwrapped second\r\n'
+        raw = (b'## Current Sprint\r\n' + notes + b'REPO_STATE=old\r\ndrop state detail\r\n'
+               + more_notes + b'### Sprint detail\r\ndrop heading detail\r\n'
+               b'## Last Completed Sprint\r\nKEEP_HISTORY=1\r\nGLOBAL_LESSONS_BASELINE=42\r\n')
+        (root / 'PROJECT_CONFIG.md').write_bytes(raw)
+        plan = self.lc.migration_plan(root)
+        plan['review'] = {key: 'reviewed' for key in self.lc.REVIEW_KEYS}
+        for spec in plan['sources'].values():
+            for entry in spec['ranges']:
+                entry.update(disposition='archived', reason='history')
+        self.lc.migrate(root, plan, apply=True)
+        config = (root / 'PROJECT_CONFIG.md').read_bytes()
+        self.assertIn(notes, config)
+        self.assertIn(more_notes, config)
+        self.assertNotIn(b'drop state detail', config)
+        self.assertNotIn(b'drop heading detail', config)
+        self.assertIn(b'## Last Completed Sprint\r\nKEEP_HISTORY=1\r\nGLOBAL_LESSONS_BASELINE=42\r\n', config)
+        dest = self.root / 'restored-notes'
+        self.lc.rollback(root, dest)
+        self.assertEqual((dest / 'PROJECT_CONFIG.md').read_bytes(), raw)
+
+    def test_migration_selected_draft_file_remains_supported(self):
+        root, _, _ = self.migration_plan()
+        rel = 'docs/issues/x.md'
+        (root / rel).parent.mkdir()
+        (root / rel).write_text('Reviewed source\n')
+        plan = self.lc.migration_plan(root, extra_sources=[rel])
+        plan['review'] = {key: 'reviewed' for key in self.lc.REVIEW_KEYS}
+        for spec in plan['sources'].values():
+            for entry in spec['ranges']:
+                entry.update(disposition='archived', reason='history')
+        plan['draft']['files'] = {rel: 'Reviewed live issue\n'}
+        self.lc.migrate(root, plan, apply=True)
+        self.assertEqual((root / rel).read_text(), 'Reviewed live issue\n')
+
+    def test_migration_inventory_refuses_unselected_output_collision(self):
+        template, _, _ = self.migration_plan()
+        for rel in ('docs/DECISIONS.md', 'docs/archive/migration.jsonl',
+                    'docs/archive/' + self.lc.sha(b'docs/HANDOFF.md')[:16] + '-1.txt'):
+            with self.subTest(path=rel), tempfile.TemporaryDirectory(dir=self.root) as temp:
+                root = Path(temp) / 'case'
+                shutil.copytree(template, root)
+                path = root / rel
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(b'Ordinary existing document')
+                output = Path(temp) / 'collision-plan.json'
+                with self.assertRaisesRegex(ValueError, 'unselected'):
+                    self.lc.write_migration_plan(root, output)
+                self.assertFalse(output.exists())
+                self.assertEqual(path.read_bytes(), b'Ordinary existing document')
+                path.unlink()
+
+    def test_migration_refuses_non_directory_ancestors_without_writes(self):
+        for blocker in ('docs/archive', 'docs'):
+            for operation in ('inventory', 'dry-run', 'apply'):
+                with self.subTest(blocker=blocker, operation=operation), tempfile.TemporaryDirectory(dir=self.root) as temp:
+                    root = Path(temp)
+                    (root / 'PROJECT_CONFIG.md').write_bytes(b'OWNER_NAME=Owner\r\n')
+                    if blocker == 'docs/archive':
+                        (root / 'docs').mkdir()
+                        (root / 'docs/HANDOFF.md').write_bytes(b'Legacy handoff\r\n')
+                    plan = self.lc.migration_plan(root)
+                    plan['review'] = {key: 'reviewed' for key in self.lc.REVIEW_KEYS}
+                    for spec in plan['sources'].values():
+                        for entry in spec['ranges']:
+                            entry.update(disposition='archived', reason='history')
+                    (root / blocker).write_bytes(b'Keep this ordinary file\r\n')
+                    before = {p.relative_to(root): self.lc.sha(p.read_bytes())
+                              for p in root.rglob('*') if p.is_file()}
+                    with self.assertRaisesRegex(ValueError, 'non-directory ancestor.*' + blocker):
+                        if operation == 'inventory':
+                            self.lc.migration_plan(root)
+                        else:
+                            self.lc.migrate(root, plan, apply=operation == 'apply')
+                    self.assertEqual(before, {p.relative_to(root): self.lc.sha(p.read_bytes())
+                                              for p in root.rglob('*') if p.is_file()})
+                    self.assertFalse((root / '.cykl/lock').exists())
+                    self.assertFalse((root / '.cykl/stage').exists())
+                    self.assertFalse((root / '.cykl/recovery.json').exists())
+
+    def test_migration_rechecks_non_directory_ancestors_under_writer_lock(self):
+        root, source, plan = self.migration_plan()
+        promote = self.lc.promote
+        def introduce_blocker(*args):
+            (root / 'docs/archive').write_bytes(b'Keep this ordinary file')
+            return promote(*args)
+        with patch.object(self.lc, 'promote', side_effect=introduce_blocker):
+            with self.assertRaisesRegex(ValueError, 'non-directory ancestor.*docs/archive'):
+                self.lc.migrate(root, plan, apply=True)
+        self.assertEqual((root / 'docs/HANDOFF.md').read_bytes(), source)
+        self.assertEqual((root / 'docs/archive').read_bytes(), b'Keep this ordinary file')
+        self.assertFalse((root / 'PROJECT_CONFIG.md').exists())
+        self.assertFalse((root / 'docs/NOW.md').exists())
+        for rel in ('.cykl/lock', '.cykl/stage', '.cykl/recovery.json'):
+            self.assertFalse((root / rel).exists())
+
+    def test_migration_mid_promotion_failure_recovers_and_restores_originals(self):
+        root, source, _ = self.migration_plan()
+        originals = {'PROJECT_CONFIG.md': b'OWNER_NAME=Owner\r\nCURRENT_SPRINT=old\r\n',
+                     'docs/HANDOFF.md': source, 'docs/ROADMAP.md': b'Old roadmap\r\n',
+                     'docs/LESSONS_CANON.md': b'Old lessons\r\n'}
+        for rel, raw in originals.items():
+            (root / rel).write_bytes(raw)
+        plan = self.lc.migration_plan(root)
+        plan['review'] = {key: 'reviewed' for key in self.lc.REVIEW_KEYS}
+        for spec in plan['sources'].values():
+            for entry in spec['ranges']:
+                entry.update(disposition='archived', reason='history')
+        durable = self.lc.durable
+        def crash(path, raw):
+            if path.parent == root / 'docs/archive':
+                raise OSError('simulated promotion failure')
+            return durable(path, raw)
+        with patch.object(self.lc, 'durable', side_effect=crash):
+            with self.assertRaisesRegex(OSError, 'simulated promotion failure'):
+                self.lc.migrate(root, plan, apply=True)
+        for rel, raw in originals.items():
+            self.assertNotEqual((root / rel).read_bytes(), raw)
+        self.assertFalse((root / 'docs/NOW.md').exists())
+        self.assertTrue((root / '.cykl/lock').exists())
+        with patch.object(self.lc.os, 'kill', side_effect=ProcessLookupError):
+            self.lc.recover(root)
+        self.lc.check(root)
+        for rel in ('.cykl/lock', '.cykl/recover.lock', '.cykl/stage', '.cykl/recovery.json'):
+            self.assertFalse((root / rel).exists())
+        live = {p.relative_to(root): p.read_bytes() for p in root.rglob('*') if p.is_file()}
+        destination = self.root / 'restored'
+        self.lc.rollback(root, destination)
+        self.assertEqual(originals, {p.relative_to(destination).as_posix(): p.read_bytes()
+                                    for p in destination.rglob('*') if p.is_file()})
+        self.assertEqual(live, {p.relative_to(root): p.read_bytes() for p in root.rglob('*') if p.is_file()})
+        self.assertFalse((root / '.cykl/lock').exists())
+
+    def test_migration_inventory_lists_archive_chunks_and_actual_write_set(self):
+        root, _, _ = self.migration_plan()
+        (root / 'docs/HANDOFF.md').write_text(('x' * 40000 + '\n') * 3)
+        before = {p.relative_to(root).as_posix() for p in root.rglob('*') if p.is_file()}
+        output = self.root / 'inventory.json'
+        summary = json.loads(self.lc.write_migration_plan(root, output))
+        plan = json.loads(output.read_text())
+        prefix = 'docs/archive/' + self.lc.sha(b'docs/HANDOFF.md')[:16]
+        expected = {'PROJECT_CONFIG.md', 'docs/HANDOFF.md', 'docs/NOW.md', 'docs/DECISIONS.md',
+                    'docs/archive/migration.jsonl', prefix + '-1.txt', prefix + '-2.txt', prefix + '-3.txt'}
+        self.assertEqual(set(plan.get('change', [])), expected)
+        self.assertEqual(set(summary['change']['paths']), expected)
+        self.assertFalse(set(plan['change']) & set(plan['keep']))
+        plan['review'] = {key: 'reviewed' for key in self.lc.REVIEW_KEYS}
+        for spec in plan['sources'].values():
+            for entry in spec['ranges']:
+                entry.update(disposition='archived', reason='history')
+        result = self.lc.migrate(root, plan, apply=True)
+        self.assertEqual(set(result['change']['paths']), expected)
+        after = {p.relative_to(root).as_posix() for p in root.rglob('*') if p.is_file()}
+        self.assertEqual(after - before, expected - before)
+
+    def test_migration_extra_source_requires_opt_in_and_reconstructs(self):
+        root, _, _ = self.migration_plan()
+        rel = 'docs/reports/selected.txt'
+        (root / rel).parent.mkdir()
+        raw = b'Explicit historical source\r\n'
+        (root / rel).write_bytes(raw)
+        plan = self.lc.migration_plan(root, extra_sources=[rel])
+        self.assertNotIn(rel, plan['keep'])
+        plan['review'] = {key: 'reviewed' for key in self.lc.REVIEW_KEYS}
+        plan['draft'] = self.draft()
+        for spec in plan['sources'].values():
+            for entry in spec['ranges']:
+                entry.update(disposition='archived', reason='historical')
+        plan['extra_sources'] = []
+        with self.assertRaisesRegex(ValueError, 'opt-in'):
+            self.lc.migrate(root, plan, apply=True)
+        self.assertEqual((root / rel).read_bytes(), raw)
+        plan['extra_sources'] = [rel]
+        self.lc.migrate(root, plan, apply=True)
+        self.assertTrue((root / rel).read_text().startswith('# Migrated'))
+        dest = self.root / 'restored'
+        self.lc.rollback(root, dest)
+        self.assertEqual((dest / rel).read_bytes(), raw)
+
+    def test_migration_instructions_require_explicit_replacement(self):
+        root, _, _ = self.migration_plan()
+        (root / 'AGENTS.md').write_bytes(b'Original instructions\r\n')
+        plan = self.lc.migration_plan(root, extra_sources=['AGENTS.md'])
+        plan['review'] = {key: 'reviewed' for key in self.lc.REVIEW_KEYS}
+        plan['draft'] = self.draft()
+        for spec in plan['sources'].values():
+            for entry in spec['ranges']:
+                entry.update(disposition='archived', reason='reviewed')
+        with self.assertRaisesRegex(ValueError, 'instruction replacement'):
+            self.lc.migrate(root, plan, apply=True)
+        plan['replacements'] = {'AGENTS.md': 'Reviewed instructions\n'}
+        self.lc.migrate(root, plan, apply=True)
+        self.assertEqual((root / 'AGENTS.md').read_text(), 'Reviewed instructions\n')
+        dest = self.root / 'restored'
+        self.lc.rollback(root, dest)
+        self.assertEqual((dest / 'AGENTS.md').read_bytes(), b'Original instructions\r\n')
+
+    def test_migration_oversized_static_config_requires_reviewed_replacement(self):
+        root, _, _ = self.migration_plan()
+        raw = b'## Identity\n' + b'Keep static configuration\n' * 150
+        (root / 'PROJECT_CONFIG.md').write_bytes(raw)
+        plan = self.lc.migration_plan(root)
+        plan['review'] = {key: 'reviewed' for key in self.lc.REVIEW_KEYS}
+        plan['draft'] = self.draft()
+        for spec in plan['sources'].values():
+            for entry in spec['ranges']:
+                entry.update(disposition='archived', reason='reviewed')
+        with self.assertRaisesRegex(ValueError, 'PROJECT_CONFIG.md cap'):
+            self.lc.migrate(root, plan, apply=True)
+        self.assertEqual((root / 'PROJECT_CONFIG.md').read_bytes(), raw)
+        plan['replacements']['PROJECT_CONFIG.md'] = 'CYKL_SCHEMA=3\nOWNER_NAME=Owner\n'
+        self.lc.migrate(root, plan, apply=True)
+        self.assertEqual((root / 'PROJECT_CONFIG.md').read_text(), plan['replacements']['PROJECT_CONFIG.md'])
+        dest = self.root / 'restored'
+        self.lc.rollback(root, dest)
+        self.assertEqual((dest / 'PROJECT_CONFIG.md').read_bytes(), raw)
+
+    def test_migration_cli_explicit_extra_source_inventory(self):
+        root, _, _ = self.migration_plan()
+        (root / 'docs/journal.txt').write_text('Opt in this journal\n')
+        output = self.root / 'plan.json'
+        proc = subprocess.run([sys.executable, '-B', str(SCRIPT), 'migrate', '--root', str(root),
+                               '--output', str(output), '--extra-source', 'docs/journal.txt'], capture_output=True)
+        self.assertEqual(proc.returncode, 0, proc.stderr.decode())
+        plan = json.loads(output.read_text())
+        self.assertEqual(plan['extra_sources'], ['docs/journal.txt'])
+        self.assertIn('docs/journal.txt', plan['sources'])
+        self.assertNotIn('docs/journal.txt', plan['keep'])
+
+    def test_migration_generated_files_cannot_overwrite_kept_documents(self):
+        root, _, plan = self.migration_plan()
+        (root / 'docs/DECISIONS.md').write_bytes(b'Ordinary decision register')
+        with self.assertRaisesRegex(ValueError, 'opt-in|unselected'):
+            self.lc.migrate(root, plan, apply=True)
+        self.assertEqual((root / 'docs/DECISIONS.md').read_bytes(), b'Ordinary decision register')
+        (root / 'docs/DECISIONS.md').unlink()
+        (root / 'AGENTS.md').write_bytes(b'Keep instructions')
+        plan['draft']['files'] = {'AGENTS.md': 'Bypass replacement review'}
+        with self.assertRaisesRegex(ValueError, 'replacement|unselected'):
+            self.lc.migrate(root, plan, apply=True)
+        self.assertEqual((root / 'AGENTS.md').read_bytes(), b'Keep instructions')
 
     def test_migration_requires_complete_review_and_source_hash(self):
         root, source, plan = self.migration_plan()
@@ -440,6 +1063,8 @@ class LifecycleTests(unittest.TestCase):
         plan['review'] = {key: 'reviewed' for key in self.lc.REVIEW_KEYS}
         plan['draft'] = self.draft()
         plan['draft'].update(self.lc.reconciliation_template([left, right], base))
+        # Whole-file replacement of oversized unstructured config now needs explicit review.
+        plan['replacements']['PROJECT_CONFIG.md'] = 'CYKL_SCHEMA=3\nMIRROR=disabled\n'
         for source in plan['sources'].values():
             for entry in source['ranges']:
                 entry.update(disposition='archived', reason='historical fixture')
@@ -576,19 +1201,24 @@ class LifecycleTests(unittest.TestCase):
     def test_migration_cli_plan_is_file_with_bounded_summary(self):
         root = self.root / 'legacy'
         (root / 'docs').mkdir(parents=True)
+        (root / 'docs/HANDOFF.md').write_text('Synthetic state\n')
         for i in range(120):
-            (root / ('docs/journal-' + str(i) + '.md')).write_text('Synthetic journal\n')
+            (root / ('docs/journal-' + str(i) + '-' + 'x' * 140 + '.md')).write_text('Synthetic journal\n')
         before = {p.relative_to(root): p.read_bytes() for p in root.rglob('*') if p.is_file()}
         output = self.root / 'plan.json'
         proc = subprocess.run([sys.executable, '-B', str(SCRIPT), 'migrate', '--root', str(root),
                                '--output', str(output)], capture_output=True)
         self.assertEqual(proc.returncode, 0, proc.stderr.decode())
         summary = json.loads(proc.stdout)
-        self.assertEqual(summary['sources'], 120)
+        self.assertEqual(summary['sources'], 1)
+        self.assertEqual(summary['keep']['count'], 120)
+        self.assertTrue(summary['keep']['truncated'])
+        self.assertIn('docs/HANDOFF.md', summary['change']['paths'])
         self.assertEqual(summary['sha256'], self.lc.sha(output.read_bytes()))
         self.assertGreater(output.stat().st_size, 16384)
         self.assertLessEqual(len(proc.stdout), 16384)
-        self.assertEqual(len(json.loads(output.read_text())['sources']), 120)
+        self.assertEqual(len(json.loads(output.read_text())['sources']), 1)
+        self.assertEqual(len(json.loads(output.read_text())['keep']), 120)
         self.assertEqual(before, {p.relative_to(root): p.read_bytes() for p in root.rglob('*') if p.is_file()})
 
     def test_rollback_cli_restores_exact_bytes_outside_live_tree(self):

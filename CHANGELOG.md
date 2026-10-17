@@ -4,6 +4,25 @@ All notable changes to cykl-lifecycle are documented here.
 
 ---
 
+## [3.0.1] — 2026-10-17
+
+### Fixed
+- `migrate` now selects only the closed v2 lifecycle-state list. Ordinary documentation
+  and AGENTS/CLAUDE instructions stay byte-identical, without stubs or archive copies.
+- Non-state sources require per-file `extra_sources` opt-in (inventory:
+  `--extra-source PATH`) or an explicit replacement, with reviewed hashes/ranges and
+  exact reconstruction. Instruction files always require explicit replacements.
+- Preserve static PROJECT_CONFIG sections; replace only Current Sprint by default.
+  Oversized configs need a reviewed bounded replacement; no silent truncation.
+- Plans list kept files; bounded summaries show change/keep counts and path previews.
+  Generated outputs cannot overwrite unselected files, including at locked preflight.
+- Regression coverage hashes 120 ordinary docs and verifies source-only rollback.
+
+### Warning
+- **Do not run 3.0.0 `migrate --apply` on a project with regular documentation.**
+  Its broad inventory rewrites ordinary docs to stubs. Upgrade to 3.0.1 and regenerate
+  the plan before applying; do not approve the old broad inventory as-is.
+
 ## [3.0.0] — 2026-10-17
 
 ### Added
