@@ -2,7 +2,7 @@
 name: cykl-migawka
 description: "Save an in-session checkpoint; /migawka, /handoff; English alias: /snapshot."
 ---
-<!-- cykl-lifecycle v3.0.0 -->
+<!-- cykl-lifecycle v3.0.1 -->
 
 # cykl-migawka
 
