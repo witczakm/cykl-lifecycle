@@ -1,46 +1,26 @@
 ---
 name: cykl-migawka
-description: Lekki snapshot stanu w środku sesji projektu wielosesyjnego — nadpisz HANDOFF, odśwież PROJECT_CONFIG i status kroku w roadmapie po istotnej decyzji, bez lekcji i bez commita. Użyj gdy użytkownik pisze "/migawka", "/handoff", "zapisz stan", "zrób snapshot", "utrwal tę decyzję", albo gdy w trakcie długiej sesji domknął się krok roadmapy lub zapadła ważna decyzja. To nie jest koniec sesji (to /zamknij) — to migawka w trakcie. NIE używaj przy snapshotach testów (Jest/Vitest), maszyn wirtualnych, baz danych ani containerów — skill dotyczy wyłącznie dokumentów stanu projektu lifecycle.
+description: "Save an in-session checkpoint; /migawka, /handoff; English alias: /snapshot."
 ---
-<!-- cykl-lifecycle v2.8.2 -->
+<!-- cykl-lifecycle v3.0.0 -->
 
-# /migawka — snapshot w środku sesji
+# cykl-migawka
 
-## Cel
+Read `context --root "$PROJECT" --skill cykl-migawka`. Prepare a JSON draft with
+repo, branch, goal, position, next, preserve, work, risks and references. Use stable
+O-* obligation IDs and A-* attempt IDs; retain unresolved work. Use the current hash:
+`python3 "$LIFECYCLE" checkpoint --root "$PROJECT" --input "$DRAFT" --expected "$HASH"`.
+The returned card is the compaction handoff. A failed checkpoint stops dependent work;
+never claim a fact saved before the returned checkpoint UUID/hash. No commit.
 
-Utrwalić stan natychmiast po ważnej decyzji lub domknięciu kroku, zamiast czekać do końca sesji.
-Roadmapa powinna być aktualna W TRAKCIE pracy, nie dopiero po niej — /migawka to mechanizm
-bieżącej aktualizacji między /start a /zamknij.
+Resolve LIFECYCLE to the installed sibling `cykl-start/scripts/lifecycle.py`; PROJECT
+is the selected project root. Install all seven skills together. Execute the script;
+do not load its source into context. Python 3.9+ is required.
 
-## Kroki
-
-1. **Sprawdź na żywym repo** aktualny stan HANDOFF + PROJECT_CONFIG + ROADMAP + datę z systemu.
-   Jeśli migawka dotyka pola stanowego, a PROJECT_CONFIG ma `STATE_PROBE=` — wykonaj sondę zamiast
-   przepisywać starą wartość.
-
-2. **Zaktualizuj stan:**
-   - docs/HANDOFF.md — NADPISZ sekcję "Snapshot" (data · gdzie jesteśmy · ostatnio zamknięte · następny ruch + dlaczego). Zawsze nadpisuj — snapshot opisuje stan "teraz". Ślad pośrednich decyzji zostaje w changelogu.
-   - docs/ROADMAP.md — TYLKO jeśli decyzja domknęła krok lub zmieniła bieżący krok: flipnij status i przesuń Pozycję. Nie zmieniaj treści kroków ani sekwencji etapów — to robi /roadmap update na jawne polecenie.
-   - PROJECT_CONFIG.md — Current Sprint, jeśli decyzja zmieniła live-state. **Pola stanowe NADPISUJ
-     w całości** (tak jak Snapshot w HANDOFF) i opatrz znacznikiem `[zmierzone …]`. Historia idzie do
-     changelogu, nie do wnętrza pola.
-
-3. **Zsynchronizuj nagłówek + changelog** — przy każdym edytowanym dokumencie z changelogiem (HANDOFF, ROADMAP):
-   bump Wersja + Ostatnia aktualizacja i dopisz wiersz changelogu w tym samym ruchu.
-   CONFIG: bump tylko nagłówka (Wersja + data — bez changelogu).
-   **Bramka spójności:** po edycji uruchom `python3 <katalog skilla cykl-start>/scripts/porzadek.py --wykonaj <katalog projektu>`
-   — sprawdza datę nagłówka vs changelog, jeden blok bieżący i rozmiar, a nadmiar przenosi do
-   `docs/archive/`. FAIL = popraw teraz, nie zostawiaj `/zamknij`.
-
-4. **Pokaż** krótko: co zmieniłeś + nowa Pozycja (jeśli się przesunęła).
-
-## Zasady
-
-- Tylko snapshot. Bez lekcji, bez komendy commit — to należy do /zamknij.
-- Status kroku flipuj tylko przy spełnionej weryfikacji (kolumna "Weryfikacja" w ROADMAP). DONE bez dowodu = fałszywy postęp.
-- Nie wykonuj git mutującego — `STATE_PROBE` musi być read-only. Commit zbiorczo przy /zamknij.
-
-## Powiązane
-
-- /zamknij — pełne domknięcie sesji (migawka + lekcje + commit).
-- /start — czyta snapshot przy następnym wejściu.
+Read only `context` output (16,384 UTF-8 bytes total). Additional named files use
+`context --file PATH`, inside that same cap. Index/history retrieval uses bounded
+helper commands; no whole-index/history reads or recursive reference expansion.
+All lifecycle writes use checkpoint, decisions add or migrate; never direct edits or v2 cleanup.
+Use exact expected hashes, and keep returned acknowledgement cards before compaction.
+Offline continues only an already-dispatched packet in this shared worktree; no new
+assignment, scope change, acceptance or publication. Mirroring is disabled by default.

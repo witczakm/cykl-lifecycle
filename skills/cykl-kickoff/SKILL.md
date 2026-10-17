@@ -1,70 +1,30 @@
 ---
 name: cykl-kickoff
-description: Załóż nowy projekt wielosesyjny od zera — stwórz strukturę folderów, skopiuj template'y dokumentów stanu, przeprowadź wywiad założeń (w tym etapy roadmapy) i zostaw projekt gotowy do pierwszej sesji. Użyj gdy użytkownik pisze "/kickoff", "/zaloz", "załóż projekt", "nowy projekt wielosesyjny", "zacznij projekt od zera", "rozpocznij nowy projekt który będzie trwał wiele sesji". To komenda jednorazowa na projekt — w istniejącym projekcie użyj /start. NIE używaj gdy "nowy projekt" oznacza scaffold frameworka (npx create-react-app, cargo new, django-admin startproject) bez intencji wielosesyjnego prowadzenia — wtedy po prostu pomóż w kodzie.
+description: "Initialize lifecycle memory for a new project; /kickoff. Existing v2 projects require reviewed migration, not overwrite."
 ---
-<!-- cykl-lifecycle v2.8.2 -->
+<!-- cykl-lifecycle v3.0.0 -->
 
-# /kickoff — założenie nowego projektu
+# cykl-kickoff
 
-## Cel
+Check for existing lifecycle files without loading their bodies. Existing legacy state
+routes to `migrate --root "$PROJECT"` (external plan file plus bounded summary); never overwrite it as a new project.
+For a new project, establish goal, repo, branch and next action. Prepare a JSON draft
+with repo, branch, goal, position, next, preserve=[], work={}, risks=[], references=[].
+Use the generic NOW and DECISIONS templates only through the bounded helper:
+`context --file` for existing projects; templates are packaged and capped at 4,096 bytes.
+Run `python3 "$LIFECYCLE" checkpoint --root "$PROJECT" --input "$DRAFT" --expected absent`.
+Then run context. Install the hook/Action and configure the required lifecycle-integrity
+check per repository. Until a blocked canary proves it, report merge protection unverified.
+This release does not create GitHub issues, milestones or releases.
 
-Każdy nowy projekt startuje z identycznej, sprawdzonej struktury. Zero ad-hoc. Powód: spójna
-struktura od dnia pierwszego znaczy, że pozostałe skille (cykl-start, cykl-zamknij…) działają
-od razu, a projekt jest "świadomy", do czego każdy element służy. Odpalasz to RAZ.
+Resolve LIFECYCLE to the installed sibling `cykl-start/scripts/lifecycle.py`; PROJECT
+is the selected project root. Install all seven skills together. Execute the script;
+do not load its source into context. Python 3.9+ is required.
 
-## Najpierw: czy to faktycznie nowy projekt?
-
-Sprawdź katalog docelowy. Jeśli istnieją PROJECT_CONFIG.md lub docs/HANDOFF.md:
-- adopt — dołóż tylko brakujące elementy (nie nadpisuj istniejących plików),
-- abort — przerwij.
-
-Nigdy nie nadpisuj istniejących dokumentów na ślepo.
-
-## Kroki
-
-1. **Wywiad założeń** (maks 5-7 pytań w jednej turze, reszta → UNKNOWN z ownerem):
-   - Wymagane do założenia: nazwa, codename/slug, katalog docelowy.
-   - Wymagane przed pracą: cel projektu (1-2 zdania), lista etapów projektu (3-7 haseł "co po kolei" — zasila ROADMAP poziom 1), granice prywatności.
-   - Jeśli projekt ma repo: remote + **`STATE_PROBE`** — jedna komenda read-only mierząca stan poza dokumentami
-     (np. `git rev-parse --short HEAD; git rev-list --left-right --count <remote>...HEAD`). Bez niej `/start`
-     porównuje dokumenty wyłącznie ze sobą i nie wykryje, że są zgodnie nieaktualne.
-   - Opcjonalne: licencja.
-   - Pole nieznane → UNKNOWN z ownerem i terminem. Wywiad-przesłuchanie zostanie porzucony; lepiej UNKNOWN niż elegancka halucynacja (F4).
-
-2. **Wybierz profil struktury** (patrz references/struktura-projektu.md):
-   - lite — README + PROJECT_CONFIG + docs/{HANDOFF,ROADMAP,LESSONS_CANON}. Mały projekt/PoC.
-   - standard — lite + plik instrukcji projektu (Claude: CLAUDE.md · Codex: AGENTS.md) + docs/{adr,specs,runbooks,reports} + skills/. Typowy projekt.
-   - regulated — standard + _ai_ops/ + runtime/audit/ + AGENTS.md. Produkcja/audyt.
-   Reszta katalogów powstaje lazy — gdy realnie potrzebna (F6).
-
-3. **Stwórz katalogi** wg wybranego profilu.
-
-4. **Skopiuj i wypełnij template'y** z assets/:
-   - Podstaw {PROJECT_NAME}, {owner}, datę z systemu.
-   - ROADMAP: wpisz etapy z wywiadu do tabeli poziomu 1 (z bramkami wyjścia), rozbij TYLKO etap 1 na kroki (poziom 2). Ustaw Pozycję na etap 1, krok 1.
-   - LESSONS_CANON startuje z F1-F6 + pustą sekcją W. Projektowe F numeruj od F10.
-   - README: przytnij tabelę i hierarchię do wybranego profilu — usuń wiersze nieistniejące w tym profilu.
-
-5. **Pokaż użytkownikowi** strukturę + co trafiło do każdego pliku.
-
-6. **Przygotuj komendę commit** "initial scaffold" (explicit ścieżki, nie -A) — z bramką mechaniczną jak
-   w `/zamknij`: warunek przez `&&` i `set -euo pipefail`, nigdy przez komentarz. Nie wykonuj git.
-
-7. **Pierwszy /start** — zreferuj: "projekt założony, Pozycja: etap 1/N · krok 1/M, następny ruch = ...".
-
-## Zasady
-
-- Nie nadpisuj istniejącego projektu. Krok "czy nowy" jest obowiązkowy.
-- Data z systemu, nie z pamięci.
-- Nie zgaduj — UNKNOWN z ownerem.
-- Nie wykonuj git.
-
-## Materiały skilla
-
-- references/struktura-projektu.md — mapa struktury + hierarchia + profile.
-- assets/*.template.md — 5 template'ów dokumentów.
-
-## Powiązane
-
-- /start — pierwsze wejście po kickoffie i każda kolejna sesja.
-- /zamknij, /migawka, /lekcja, /lekcja-g, /roadmap — pętla prowadzenia.
+Read only `context` output (16,384 UTF-8 bytes total). Additional named files use
+`context --file PATH`, inside that same cap. Index/history retrieval uses bounded
+helper commands; no whole-index/history reads or recursive reference expansion.
+All lifecycle writes use checkpoint, decisions add or migrate; never direct edits or v2 cleanup.
+Use exact expected hashes, and keep returned acknowledgement cards before compaction.
+Offline continues only an already-dispatched packet in this shared worktree; no new
+assignment, scope change, acceptance or publication. Mirroring is disabled by default.

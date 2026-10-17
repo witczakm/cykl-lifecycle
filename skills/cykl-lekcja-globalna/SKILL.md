@@ -1,65 +1,29 @@
 ---
 name: cykl-lekcja-globalna
-description: Złap wniosek GLOBALNY — taki, który obowiązuje w KAŻDYM projekcie użytkownika, nie tylko bieżącym — i zapisz go do globalnego pliku lekcji dostępnego wszystkim projektom. Użyj gdy użytkownik pisze "/lekcja-g", "lekcja globalna", "to dotyczy wszystkich projektów", "zapisz globalnie", albo gdy nauka jest uniwersalna (sposób pracy z narzędziami, wzorzec komunikacji, zasada procesu — nie specyfika jednego projektu). Lekcja globalna ZAWSZE wymaga zgody użytkownika przed zapisem. NIE używaj gdy mowa o lekcji w sensie edukacyjnym ani gdy wniosek dotyczy tylko bieżącego projektu — wtedy użyj /lekcja.
+description: "Propose a cross-project lesson; /lekcja-g; English alias: /lesson-global. Global installation needs explicit approval."
 ---
-<!-- cykl-lifecycle v2.8.2 -->
+<!-- cykl-lifecycle v3.0.0 -->
 
-# /lekcja-g — wniosek globalny
+# cykl-lekcja-globalna
 
-## Cel
+Read `context --root "$PROJECT" --skill cykl-lekcja-globalna`. Record an L-* proposed
+lesson using `decisions add --root "$PROJECT" --input "$ROW" --expected "$HASH"`.
+Supply one JSON row: id, kind="lesson", status="proposed", scope, supersedes="-",
+and text containing rule, precedent and test. Keep the returned index line and card;
+the writer preserves the old index without a whole-index read by the agent.
+Keep an O-* obligation for any pending global approval/installation. Ask for explicit
+approval before changing another project's or global instructions. This release does
+not install global rules: provide the approved text for the target's authorized writer.
+Do not mark applied without verified evidence; preserve the pending ID until then.
 
-Zapisać lekcję działającą ponad pojedynczym projektem do warstwy globalnej dostępnej każdemu
-projektowi użytkownika. Osobny skill, bo lekcja globalna wpływa na INNE projekty — nie wolno
-zapisać automatem. Zawsze wymaga jawnej zgody.
+Resolve LIFECYCLE to the installed sibling `cykl-start/scripts/lifecycle.py`; PROJECT
+is the selected project root. Install all seven skills together. Execute the script;
+do not load its source into context. Python 3.9+ is required.
 
-## Najpierw potwierdź, że to naprawdę globalna
-
-Test: "Czy ta lekcja byłaby prawdziwa i użyteczna w INNYM projekcie użytkownika?"
-- TAK i jest uniwersalna → globalna, kontynuuj.
-- Dotyczy tylko tego projektu → użyj /lekcja.
-- Niepewne → zapytaj. Przy wątpliwości wybieraj projektową.
-
-## Gdzie trafia lekcja globalna
-
-Cel zależy od środowiska (numeracja zawsze GL-NNN):
-
-| Środowisko | Plik docelowy | Zapis |
-|---|---|---|
-| Claude Code (CCT) | `~/.claude/context/lessons.md` | bezpośrednio |
-| Codex | `~/.codex/AGENTS.md` (sekcja „cykl-lifecycle — global lessons") | bezpośrednio, za zgodą; sandbox może poprosić o zatwierdzenie zapisu poza katalogiem projektu |
-| Cowork | brak zapisu do `~/.claude/` → marker [CANDIDATE GLOBAL] + gotowa komenda dla CCT | dwuetapowo |
-
-Dlaczego `~/.codex/AGENTS.md`: to plik globalnych instrukcji, który Codex czyta na starcie KAŻDEJ sesji w każdym projekcie — więc lekcja realnie zaczyna obowiązywać. Dopisuj zwięźle (globalny limit ~32 KiB).
-
-## Kroki
-
-1. Sformułuj lekcję:
-   - Reguła (1 zdanie) + Dlaczego (precedent) + Test operacyjny.
-   - Status: PROPOSED. Owner: użytkownik. Data. Zakres. Ewentualne przeciwwskazania.
-
-2. Pokaż użytkownikowi treść + uzasadnienie "czemu globalna" → czekaj na OK. Bez zgody nie idź dalej.
-
-3. Po zgodzie — zapis zależnie od środowiska:
-   - **Claude Code / Codex (terminal):** dopisz bezpośrednio do pliku docelowego (tabela wyżej) jako GL-NNN, pod nagłówkiem sekcji. W Codeksie zapis do ~/.codex/AGENTS.md jest poza katalogiem projektu — sandbox może poprosić o zatwierdzenie; to oczekiwane.
-   - **Cowork (brak zapisu globalnego):** wstaw w docs/LESSONS_CANON.md marker [CANDIDATE GLOBAL: do zapisu przez CCT] przy lekcji i podaj gotową treść + polecenie dla CCT.
-
-4. Po faktycznym zapisie GL-NNN (przez terminal lub CCT):
-   - Podmień marker [CANDIDATE GLOBAL] na [GLOBALNA → GL-NNN].
-   - Dopisz GL-NNN do GLOBAL_LESSONS_BASELINE w PROJECT_CONFIG.md.
-
-## Siatka bezpieczeństwa
-
-Kandydat nie zależy od ludzkiej pamięci: /start przy każdym wejściu skanuje LESSONS_CANON
-pod kątem [CANDIDATE GLOBAL] i przypomina z gotowym poleceniem dla CCT.
-
-## Zasady
-
-- Zawsze za zgodą. Nigdy automatem.
-- Cowork nie deklaruje "zapisane globalnie" — robi to i potwierdza terminal (Claude Code lub Codex).
-- Marker [GLOBALNA → GL-NNN] wolno wstawić dopiero po faktycznym zapisie GL-NNN.
-
-## Powiązane
-
-- /lekcja — wniosek projektowy.
-- /start — wykrywa wiszące kandydatury globalne.
-- /zamknij — może wywołać tę logikę przy zbiorczym wyciąganiu lekcji.
+Read only `context` output (16,384 UTF-8 bytes total). Additional named files use
+`context --file PATH`, inside that same cap. Index/history retrieval uses bounded
+helper commands; no whole-index/history reads or recursive reference expansion.
+All lifecycle writes use checkpoint, decisions add or migrate; never direct edits or v2 cleanup.
+Use exact expected hashes, and keep returned acknowledgement cards before compaction.
+Offline continues only an already-dispatched packet in this shared worktree; no new
+assignment, scope change, acceptance or publication. Mirroring is disabled by default.

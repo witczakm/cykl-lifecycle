@@ -5,3 +5,13 @@ Thumbs.db
 # w repo, bo README linkuje do niego bezpośrednio przez raw URL.)
 *.zip
 .claude/
+
+# Local analysis notes can contain private paths; never package or publish them.
+.inventory-codex.md
+.research-grok.md
+.redteam-grok.md
+.rev-impl-grok.md
+__pycache__/
+*.pyc
+.cykl/
+.rev-impl2-grok.md

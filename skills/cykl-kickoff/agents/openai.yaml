@@ -1,10 +1,6 @@
-# Codex-only metadata (ignorowane przez Claude Code / Cowork). Format: developers.openai.com/codex/skills
 interface:
-  display_name: "cykl-kickoff — założenie projektu"
-  short_description: "Załóż nowy projekt wielosesyjny (struktura + dokumenty stanu). Komenda jednorazowa — wywołuj jawnie: $cykl-kickoff."
+  display_name: "cykl-kickoff"
+  short_description: "Bounded project lifecycle: kickoff"
+  default_prompt: "Use $cykl-kickoff for this project lifecycle task."
 policy:
-  # 2.8.1: widoczny na liście skilli jak pozostałe sześć. Do 2.8.0 był tylko jawny ($cykl-kickoff)
-  # z obawy o scaffold w cwd — w praktyce Codex raportował „nie mam cykl-kickoff", a przed fałszywym
-  # odpaleniem chronią negatywne wyzwalacze w description (npx create-*, cargo new…) i krok
-  # „czy to faktycznie nowy projekt?" w SKILL.md (adopt/abort, nigdy nadpisywanie).
   allow_implicit_invocation: true

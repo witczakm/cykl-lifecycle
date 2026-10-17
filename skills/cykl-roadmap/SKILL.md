@@ -1,44 +1,26 @@
 ---
 name: cykl-roadmap
-description: Pokaż pozycję i sekwencję prac z ROADMAP projektu — na którym etapie projektu jesteśmy i w którym kroku tego etapu — opcjonalnie zaktualizuj na wyraźne polecenie. Użyj gdy użytkownik pisze "/roadmap", "co po kolei w projekcie", "pokaż plan projektu", "pokaż postęp", "na którym etapie jesteśmy", "jaka jest kolejność prac". Domyślnie tylko pokazuje (read-only). NIE używaj gdy mowa o roadmapie produktu klienta, firmy zewnętrznej lub ogólnej strategii biznesowej — skill czyta wyłącznie docs/ROADMAP.md bieżącego projektu lifecycle. NIE używaj gdy pytanie dotyczy kolejności kroków w konkretnym bieżącym zadaniu — ten skill czyta docs/ROADMAP.md projektu lifecycle, nie odpowiada na ogólne pytania "co robić dalej".
+description: "Show observed GitHub release/task position; /roadmap. Update only on explicit request."
 ---
-<!-- cykl-lifecycle v2.8.2 -->
+<!-- cykl-lifecycle v3.0.0 -->
 
-# /roadmap — pozycja i sekwencja prac
+# cykl-roadmap
 
-## Cel
+Run `context --root "$PROJECT" --skill cykl-roadmap`. Show the current milestone,
+issue IDs, next action and observation freshness. GitHub issues/milestones own scope
+and status. The local ROADMAP is a bounded observation, never a second queue.
+An explicit update needs verified online authority; offline, record an O-* pending
+change through checkpoint. In this minimal release GitHub operations are manual.
+Persist a reviewed projection using checkpoint's files map, with the expected NOW hash.
 
-Pokazać dwie rzeczy naraz: gdzie jesteśmy w całym projekcie (etap X z N) i gdzie jesteśmy
-w bieżącym etapie (krok Y z M). ROADMAP to jedyne źródło prawdy o kolejności i postępie.
-Domyślnie read-only — przypadkowa zmiana roadmapy to drift.
+Resolve LIFECYCLE to the installed sibling `cykl-start/scripts/lifecycle.py`; PROJECT
+is the selected project root. Install all seven skills together. Execute the script;
+do not load its source into context. Python 3.9+ is required.
 
-## Kroki
-
-1. **Jeśli to początek sesji** (nie było /start w tej rozmowie) — zaproponuj najpierw /start:
-   sama roadmapa bez HANDOFF i CONFIG da niepełny obraz.
-
-2. **Pokaż** zwięźle:
-   - Linia Pozycja: Etap X/N "nazwa" · krok Y/M "nazwa".
-   - Statusy kroków bieżącego etapu — co DONE, co IN_PROGRESS, co TODO.
-   - Sekwencja pozostałych etapów (poziom 1) — jednym wierszem na etap.
-
-3. **Aktualizuj TYLKO na wyraźne polecenie** ("/roadmap update <powód>" lub "zaktualizuj roadmap"):
-   - Zmiana statusów / Pozycji / rozbicia etapu — według polecenia.
-   - Treści etapów i kroków nie usuwaj i nie przeredagowuj przy zmianie statusu. Usunięty krok znika bezgłośnie — nikt nie zauważy braku. Zmiana zakresu wymaga powodu od użytkownika + wpisu w changelogu.
-   - Etap na DONE tylko przy spełnionej **Bramce wyjścia** (kolumna w tabeli etapów) — pokaż, czym została spełniona. Komplet kroków DONE to warunek konieczny, nie wystarczający.
-   - Następny etap rozbijaj na kroki dopiero gdy bieżący się domyka (F6). Rozbicie z wyprzedzeniem zdezaktualizuje się zanim do niego dojdziesz.
-   - Zsynchronizuj nagłówek (Wersja + Ostatnia aktualizacja) + wiersz changelogu w tym samym ruchu.
-   - Nie kopiuj tu live-state (commity/testy/daty) — to żyje w PROJECT_CONFIG.
-
-## Zasady
-
-- Read-only domyślnie. Mutuj tylko na jawne polecenie.
-- Status — swobodnie (na polecenie); treść kroków — tylko świadomie. To dwie różne operacje o różnym ryzyku.
-- ROADMAP nie powiela liczb z CONFIG.
-- Nie wykonuj git.
-
-## Powiązane
-
-- /start — czyta ROADMAP (Pozycję) jako część wejścia w sesję.
-- /migawka — flipuje status kroku w trakcie sesji.
-- /zamknij — aktualizuje statusy, Pozycję i rozbicie następnego etapu.
+Read only `context` output (16,384 UTF-8 bytes total). Additional named files use
+`context --file PATH`, inside that same cap. Index/history retrieval uses bounded
+helper commands; no whole-index/history reads or recursive reference expansion.
+All lifecycle writes use checkpoint, decisions add or migrate; never direct edits or v2 cleanup.
+Use exact expected hashes, and keep returned acknowledgement cards before compaction.
+Offline continues only an already-dispatched packet in this shared worktree; no new
+assignment, scope change, acceptance or publication. Mirroring is disabled by default.

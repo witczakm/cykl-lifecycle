@@ -1,7 +1,6 @@
-# Codex-only metadata (ignorowane przez Claude Code / Cowork). Format: developers.openai.com/codex/skills
 interface:
-  display_name: "cykl-lekcja-globalna — wniosek globalny"
-  short_description: "Zapisz lekcję obowiązującą we wszystkich projektach. ZAWSZE pyta o zgodę przed zapisem."
+  display_name: "cykl-lekcja-globalna"
+  short_description: "Bounded project lifecycle: lekcja-globalna"
+  default_prompt: "Use $cykl-lekcja-globalna for this project lifecycle task."
 policy:
-  # Sam skill bramkuje zapis jawną zgodą, więc implicit tylko PROPONUJE — bez ryzyka cichego zapisu.
   allow_implicit_invocation: true

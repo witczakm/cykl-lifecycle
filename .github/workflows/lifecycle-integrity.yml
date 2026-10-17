@@ -1,0 +1,75 @@
+name: lifecycle-integrity
+on:
+  pull_request:
+  merge_group:
+  push:
+    branches: [main, master]
+permissions:
+  contents: read
+jobs:
+  lifecycle-integrity:
+    name: lifecycle-integrity
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout tested result
+        uses: actions/checkout@v4
+        with:
+          path: candidate
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Checkout trusted validator
+        uses: actions/checkout@v4
+        with:
+          path: trusted
+          ref: ${{ vars.LIFECYCLE_VALIDATOR_REF || github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+          persist-credentials: false
+      - name: Validate exact result and ancestry
+        shell: bash
+        run: |
+          set -euo pipefail
+          validator="$GITHUB_WORKSPACE/trusted/skills/cykl-start/scripts/lifecycle.py"
+          test -f "$validator" || { echo 'Bootstrap a reviewed v3 validator on the trusted ref first'; exit 1; }
+          cd candidate
+          temporary="$(mktemp -d)"
+          trap 'rm -rf "$temporary"' EXIT
+          read -ra ancestry <<< "$(git rev-list --parents -n 1 HEAD)"
+          export_tree() {
+            mkdir -p "$2"
+            git archive "$1" | tar -x -C "$2"
+          }
+          export_tree HEAD "$temporary/result"
+          if [ "${#ancestry[@]}" -eq 3 ]; then
+            mapfile -t bases < <(git merge-base --all "${ancestry[1]}" "${ancestry[2]}")
+            [ "${#bases[@]}" -eq 1 ] || { echo 'Ambiguous merge-base'; exit 1; }
+            export_tree "${ancestry[1]}" "$temporary/left"
+            export_tree "${ancestry[2]}" "$temporary/right"
+            export_tree "${bases[0]}" "$temporary/base"
+            project=false
+            for tree in result left right base; do
+              if [ -e "$temporary/$tree/PROJECT_CONFIG.md" ] || [ -e "$temporary/$tree/docs/NOW.md" ]; then project=true; fi
+            done
+            if "$project"; then
+              python3 "$validator" check --merge-result --trusted-root "$GITHUB_WORKSPACE/trusted" --root "$temporary/result" --parent "$temporary/left" --parent "$temporary/right" --base "$temporary/base"
+            else
+              python3 "$validator" check --package --trusted-root "$GITHUB_WORKSPACE/trusted" --root "$temporary/result"
+            fi
+          else
+            # PR and queue runs must check a real merge result. Push is detection only.
+            [ "$GITHUB_EVENT_NAME" = push ] && [ "${#ancestry[@]}" -le 2 ] || { echo 'Expected exactly two merge parents'; exit 1; }
+            project=false
+            if [ -e "$temporary/result/PROJECT_CONFIG.md" ] || [ -e "$temporary/result/docs/NOW.md" ]; then project=true; fi
+            if [ "${#ancestry[@]}" -eq 2 ] && git cat-file -e "${ancestry[1]}:docs/NOW.md" 2>/dev/null; then project=true; fi
+            if "$project"; then
+              python3 "$validator" check --trusted-root "$GITHUB_WORKSPACE/trusted" --root "$temporary/result"
+            else
+              python3 "$validator" check --package --trusted-root "$GITHUB_WORKSPACE/trusted" --root "$temporary/result"
+            fi
+          fi
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: python3 -B -m unittest discover -s tests -v
+      - run: bash build-plugin.sh

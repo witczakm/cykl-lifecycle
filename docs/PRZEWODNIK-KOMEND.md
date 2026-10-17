@@ -1,3 +1,5 @@
+> Historical v2 guide. Version 3.0.0 is breaking: use the [current README and migration guide](../README.md). Do not run v2 cleanup/writers on schema 3.
+
 # Przewodnik komend — zestaw cykl-lifecycle
 
 **Wersja:** 2.8.2  

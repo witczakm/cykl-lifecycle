@@ -1,6 +1,6 @@
-# Codex-only metadata (ignorowane przez Claude Code / Cowork). Format: developers.openai.com/codex/skills
 interface:
-  display_name: "cykl-roadmap — pozycja i sekwencja"
-  short_description: "Pokaż gdzie jesteśmy: etap X/N · krok Y/M + statusy. Domyślnie read-only."
+  display_name: "cykl-roadmap"
+  short_description: "Bounded project lifecycle: roadmap"
+  default_prompt: "Use $cykl-roadmap for this project lifecycle task."
 policy:
   allow_implicit_invocation: true
