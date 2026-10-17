@@ -2,7 +2,7 @@
 name: cykl-kickoff
 description: "Initialize lifecycle memory for a new project; /kickoff. Existing v2 projects require reviewed migration, not overwrite."
 ---
-<!-- cykl-lifecycle v3.0.1 -->
+<!-- cykl-lifecycle v3.0.2 -->
 
 # cykl-kickoff
 

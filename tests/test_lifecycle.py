@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import re
 import shutil
 from pathlib import Path
 import subprocess
@@ -1041,6 +1042,37 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual(proc.returncode, 1)
         self.assertEqual(proc.stdout, b'')
         self.assertLessEqual(len(proc.stderr), 1024)
+
+    def test_context_many_long_rows_fail_soft_index(self):
+        root = self.init()
+        rows = [dict(id=('D-' if i % 2 else 'L-') + 'row%03d' % i, kind='decision' if i % 2 else 'lesson',
+                     status='accepted', scope='project', supersedes='-',
+                     text='First sentence %d. ' % i + 'Long body text. ' * 100) for i in range(300)]
+        (root / 'docs/DECISIONS.md').write_text(self.lc.render_decisions(rows))
+        (root / 'CLAUDE.md').write_text('c' * 4000)
+        proc = subprocess.run([sys.executable, '-B', str(SCRIPT), 'context', '--root', str(root)], capture_output=True)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        out = proc.stdout.decode()
+        self.assertLessEqual(len(proc.stdout), 16384)
+        self.assertIn('[... truncated', out)
+        shown = sum(1 for r in rows if r['id'] + ' ' in out)
+        self.assertRegex(out, r'\[\.\.\. (\d+) more')
+        self.assertEqual(shown + int(re.search(r'\[\.\.\. (\d+) more', out)[1]), 300)
+        self.assertIn('First sentence 0.', out)
+        self.assertNotIn('Long body text.', out)
+
+    def test_preexisting_large_archive_is_kept_but_owned_chunk_cap_holds(self):
+        root, _, plan = self.migration_plan()
+        (root / 'docs/archive').mkdir()
+        big = root / 'docs/archive/legacy-v2.txt'
+        big.write_bytes(b'x' * 412519)
+        self.lc.migrate(root, plan, apply=True)
+        self.assertEqual(big.read_bytes(), b'x' * 412519)
+        self.lc.check(root)
+        chunk = next((root / 'docs/archive').glob('*-2.txt'))
+        chunk.write_bytes(b'y' * 65537)
+        with self.assertRaisesRegex(ValueError, 'cap exceeded'):
+            self.lc.check(root)
 
     def test_package_templates_and_descriptions_are_capped(self):
         self.assertEqual(len(self.lc.package_check()), 7)
