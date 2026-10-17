@@ -368,6 +368,37 @@ def package_check(root=None):
     return found
 
 
+def clip(text, cap, hint):
+    # Fail soft: cut to cap bytes (marker included) at a character boundary.
+    if len(text.encode()) <= cap:
+        return text
+    mark = '\n[... truncated - ' + hint + ']'
+    room = max(cap - len(mark.encode()), 0)
+    return text.encode()[:room].decode('utf-8', 'ignore') + mark
+
+
+def row_line(row, width=120):
+    first = re.split(r'(?<=[.!?])\s|\n', row['text'].strip(), 1)[0]
+    first = first if len(first) <= width else first[:width - 1] + '~'
+    return '{} {} {}: {}'.format(row['id'], row['kind'], row['status'], first)
+
+
+def context_rows(rows, budget):
+    # One-line index entries; full row: grep '^<id>' docs/DECISIONS.md (no extra subcommand).
+    lines = [row_line(r) for r in rows]
+    head = 'Active decisions/lessons (index; full row: grep "^<id>" docs/DECISIONS.md):'
+    out, used = [head], len(head.encode())
+    for i, line in enumerate(lines):
+        mark = '[... {} more - grep -c "" docs/DECISIONS.md; ids: grep -o "^[DL]-[^\t]*" docs/DECISIONS.md]'.format(len(lines) - i)
+        if used + len(line.encode()) + 1 + len(mark.encode()) + 1 > budget and i < len(lines):
+            if used + len(mark.encode()) + 1 <= budget or i == 0:
+                out.append(mark)
+            return '\n'.join(out)
+        out.append(line)
+        used += len(line.encode()) + 1
+    return '\n'.join(out)
+
+
 def context(root, skill='cykl-start', task=None, files=None):
     state = check(root)
     found = package_check()
@@ -378,10 +409,11 @@ def context(root, skill='cykl-start', task=None, files=None):
         pieces.append(text if path.parent.name == skill else re.search(r'^description: (.+)$', text, re.M)[0])
     for rel in ('AGENTS.md', 'CLAUDE.md', 'PROJECT_CONFIG.md', 'docs/NOW.md', 'docs/ROADMAP.md'):
         if exact_path_exists(root, rel):
-            pieces.append(read(root, rel, cap_for(rel)))
-    for row in decision_rows(root).values():
-        if row['id'] in state['references'] or (row['status'] == 'accepted' and row['scope'] in ('project', 'task:' + str(task))):
-            pieces.append(dumps(row))
+            text = read(root, rel, cap_for(rel))
+            pieces.append(text if rel == 'docs/NOW.md' else clip(text, 2048, 'read ' + rel + ' in full'))
+    rows = [row for row in decision_rows(root).values()
+            if row['id'] in state['references'] or (row['status'] == 'accepted' and row['scope'] in ('project', 'task:' + str(task)))]
+    slot = len(pieces)
     exclusions = set()
     for key in state['work']:
         if key.startswith('A-'):
@@ -400,6 +432,9 @@ def context(root, skill='cykl-start', task=None, files=None):
         require(not rel.startswith('docs/decisions/') or Path(rel).stem in state['references'], 'unlisted decision body; use index projection')
         require(not any(rel == path or rel.startswith(path + '/') or path == '.' for path in exclusions), 'packet excluded path')
         pieces.append(read(root, rel, min(cap_for(rel) or 8192, 8192)))
+    if rows:
+        used = len(('\n\n'.join(pieces) + '\n\n\n').encode())
+        pieces.insert(slot, context_rows(rows, max(min(6144, OUTPUT_CAP - used), 0)))
     return bounded('\n\n'.join(pieces) + '\n')
 
 
