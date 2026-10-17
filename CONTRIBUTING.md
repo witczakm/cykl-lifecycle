@@ -1,4 +1,4 @@
-> For v3.0.1, follow [R2](docs/design/v3.0.md) and the [README](README.md). The v2 conventions below are historical; use the stdlib tests and build script for current verification.
+> For v3.1.0, follow [R2](docs/design/v3.0.md) and the [README](README.md). The v2 conventions below are historical; use the stdlib tests and build script for current verification.
 
 # Wkład w cykl-lifecycle
 

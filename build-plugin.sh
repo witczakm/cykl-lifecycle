@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Buduje artefakty wydania:
 #   cykl-lifecycle.plugin              — paczka dla Claude Cowork (przeciągasz do rozmowy)
-#   cykl-lifecycle-skills.zip          — 7 skilli do rozpakowania wprost w katalogu skilli
+#   cykl-lifecycle-skills.zip          — 8 skilli (7 podstawowych + cykl-prowadzacy) do rozpakowania wprost w katalogu skilli
 #
 # DLACZEGO ten skrypt istnieje: paczka .plugin zawiera WŁASNĄ KOPIĘ całego skills/
 # oraz manifestu. Kto instaluje z .plugin, dostaje treść z paczki, nie z repozytorium.
@@ -32,8 +32,8 @@ for skill in skills:
     markers = re.findall(r'<!-- cykl-lifecycle v([^ ]+) -->', skill.read_text())
     if markers != [version]:
         raise SystemExit('version mismatch: plugin manifest and ' + str(skill))
-if len(skills) != 7:
-    raise SystemExit('version check requires seven skills')
+if len(skills) != 8:
+    raise SystemExit('version check requires eight skills')
 PY
 
 # 1. Staging — dokładnie to, co ma trafić do paczki
@@ -93,12 +93,12 @@ trap 'rm -rf "$STAGE" "$VERIFY" "$VZ"' EXIT
 unzip -tq "$SKILLS_ZIP"
 unzip -q "$SKILLS_ZIP" -d "$VZ"
 
-# W korzeniu archiwum ma być dokładnie 7 katalogów cykl-* i ani jednego "skills"
+# W korzeniu archiwum ma być dokładnie 8 katalogów cykl-* i ani jednego "skills"
 top_dirs="$(find "$VZ" -maxdepth 1 -mindepth 1 -type d -exec basename {} \; | sort)"
 top_count="$(printf '%s\n' "$top_dirs" | grep -c '^cykl-' || true)"
 
-[ "$top_count" -eq 7 ] \
-  || { echo "BŁĄD: w korzeniu zipa ma być 7 katalogów cykl-*, jest $top_count:"; printf '%s\n' "$top_dirs"; exit 1; }
+[ "$top_count" -eq 8 ] \
+  || { echo "BŁĄD: w korzeniu zipa ma być 8 katalogów cykl-*, jest $top_count:"; printf '%s\n' "$top_dirs"; exit 1; }
 
 printf '%s\n' "$top_dirs" | grep -qx 'skills' \
   && { echo "BŁĄD: zip zawiera nadrzędny katalog skills/ — instalacja jedną komendą nie zadziała"; exit 1; }

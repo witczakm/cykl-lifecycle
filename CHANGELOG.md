@@ -4,6 +4,33 @@ All notable changes to cykl-lifecycle are documented here.
 
 ---
 
+## [3.1.0] — 2026-10-18
+
+Additive minor release: three editions of one package. No migration; NOW schema stays 3.
+
+### Added
+- **Local edition** (`TASKS=local`): `docs/ROADMAP.md` task lines plus `docs/issues/T-*.md`
+  are the task authority, validated by `check`. No GitHub needed. A missing `TASKS` line
+  keeps the 3.0.x GitHub behaviour.
+- **GitHub + multi-agent edition**: optional skill `cykl-prowadzacy` (`/lead`) with LEAD,
+  BRIEF, THREADS and JOURNAL templates; `docs/lead/THREADS.md` is a capped, projected
+  surface; with `docs/lead/LEAD.md` present, `check` validates brief `model_reason` and
+  the `=== SHORT ===` report shape.
+- `install.sh --edition core|multi`; the installer replaces all `cykl-*` skills together.
+- README: edition comparison and per-edition install; long migration and merge-protection
+  text moved to `docs/MIGRATION-v2.md` and `docs/MERGE-PROTECTION.md`.
+
+### Changed
+- `check --package` accepts the seven core skills plus optionally `cykl-prowadzacy`.
+- Skill footers describe offline behaviour per `TASKS` value.
+- The `.plugin` artifact and combined skills ZIP now contain eight skills.
+
+### Warning
+- Do not mix skill versions: a 3.0.x `lifecycle.py` rejects an eight-skill install.
+  Replace all `cykl-*` folders together.
+- The CI integrity validator pins the version marker, so this release needs the same
+  one-time maintainer merge as 3.0.1.
+
 ## [3.0.1] — 2026-10-17
 
 ### Fixed

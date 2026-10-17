@@ -2,7 +2,7 @@
 name: cykl-start
 description: "Resume a project session; /start. Read a validated bounded projection and report the next action."
 ---
-<!-- cykl-lifecycle v3.0.1 -->
+<!-- cykl-lifecycle v3.1.0 -->
 
 # cykl-start
 
@@ -25,5 +25,7 @@ Read only `context` output (16,384 UTF-8 bytes total). Additional named files us
 helper commands; no whole-index/history reads or recursive reference expansion.
 All lifecycle writes use checkpoint, decisions add or migrate; never direct edits or v2 cleanup.
 Use exact expected hashes, and keep returned acknowledgement cards before compaction.
-Offline continues only an already-dispatched packet in this shared worktree; no new
-assignment, scope change, acceptance or publication. Mirroring is disabled by default.
+With TASKS=github (default) offline continues only an already-dispatched packet in this
+shared worktree: no new assignment, scope change, acceptance or publication. With TASKS=local,
+docs/ROADMAP.md and docs/issues are the task authority and change only through checkpoint.
+Mirroring is disabled by default.
