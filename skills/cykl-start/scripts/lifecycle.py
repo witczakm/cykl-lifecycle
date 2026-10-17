@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """cykl-lifecycle 3.0.1. Offline, stdlib-only reader and sole lifecycle writer."""
 import argparse
+import ast
 import hashlib
 import json
 import os
@@ -12,6 +13,7 @@ import sys
 import tempfile
 import uuid
 
+VERSION = '3.0.1'
 OUTPUT_CAP = 16384
 NOW_CAP = 4096
 INDEX_HEADER = '# DECISIONS\n\nid\tkind\tstatus\tscope\tsupersedes\ttext\n'
@@ -352,8 +354,59 @@ def check_workflow(root, trusted):
     require(file_hash(safe(root, rel)) == expected, 'workflow differs from trusted version')
 
 
+def semver_key(version):
+    require(isinstance(version, str), 'invalid semver')
+    match = re.fullmatch(
+        r'(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)'
+        r'(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?'
+        r'(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?', version)
+    require(match is not None, 'invalid semver')
+    prerelease = match[4].split('.') if match[4] is not None else []
+    require(all(not p.isdigit() or len(p) == 1 or not p.startswith('0')
+                for p in prerelease), 'invalid semver')
+    return (tuple(int(match[i]) for i in (1, 2, 3)), not prerelease,
+            tuple((0, int(p)) if p.isdigit() else (1, p) for p in prerelease))
+
+
 def package_check(root=None):
     skills = Path(root) / 'skills' if root is not None else Path(__file__).resolve().parents[2]
+    # Standalone skill installations have no plugin manifest.
+    version = VERSION
+    if root is not None:
+        root = Path(root)
+        manifest = loads(read(root, '.claude-plugin/plugin.json', 4096))
+        require(isinstance(manifest, dict), 'invalid package manifest')
+        version = manifest.get('version')
+    require(semver_key(version) >= semver_key(VERSION), 'package version downgrade')
+    if root is not None:
+        codex = loads(read(root, '.codex-plugin/plugin.json', 4096))
+        require(isinstance(codex, dict) and codex.get('version') == version,
+                'codex package manifest version mismatch')
+        if safe(root, 'marketplace.json').exists():
+            marketplace = loads(read(root, 'marketplace.json', 4096))
+            require(isinstance(marketplace, dict) and isinstance(marketplace.get('plugins'), list),
+                    'invalid marketplace manifest')
+            require(all(isinstance(plugin, dict) and plugin.get('version') == version
+                        for plugin in marketplace['plugins']), 'marketplace version mismatch')
+        # Inspect candidate syntax only; the running module still supplies the trusted floor.
+        source = read(root, 'skills/cykl-start/scripts/lifecycle.py', 131072)
+        try:
+            module = ast.parse(source)
+        except SyntaxError as exc:
+            raise ValueError('invalid candidate VERSION source') from exc
+        assignments = []
+        for node in module.body:
+            if isinstance(node, (ast.Assign, ast.AnnAssign, ast.AugAssign)):
+                targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+                if any(isinstance(name, ast.Name) and name.id == 'VERSION'
+                       for target in targets for name in ast.walk(target)):
+                    assignments.append(node)
+        require(len(assignments) == 1, 'candidate must define exactly one module VERSION')
+        assignment = assignments[0]
+        require(isinstance(assignment, ast.Assign) and len(assignment.targets) == 1
+                and isinstance(assignment.targets[0], ast.Name)
+                and isinstance(assignment.value, ast.Constant) and assignment.value.value == version,
+                'candidate VERSION must be a literal matching the package version')
     require(not skills.is_symlink(), 'symlink package skills')
     found = sorted(skills.glob('cykl-*/SKILL.md'))
     require(len(found) == 7, 'package must contain seven skills')
@@ -365,7 +418,7 @@ def package_check(root=None):
         desc = re.search(r'^description: (.+)$', text, re.M)
         require(desc is not None, 'skill description missing')
         bounded(desc[1], 512, 'description')
-        require('<!-- cykl-lifecycle v3.0.1 -->' in text, 'skill version')
+        require(re.findall(r'<!-- cykl-lifecycle v([^ ]+) -->', text) == [version], 'skill version')
     return found
 
 
@@ -1007,6 +1060,10 @@ def main():
             else:
                 check(args.root, args.parent, args.base, merge_result=args.merge_result)
                 result = 'Lifecycle OK\n'
+            if not args.package and (safe(args.root, '.claude-plugin/plugin.json').exists()
+                    or safe(args.root, '.codex-plugin/plugin.json').exists()
+                    or any((args.root / 'skills').glob('cykl-*/SKILL.md'))):
+                package_check(args.root)
         elif args.command == 'context':
             result = context(args.root, args.skill, args.task, args.file)
         elif args.command == 'checkpoint':

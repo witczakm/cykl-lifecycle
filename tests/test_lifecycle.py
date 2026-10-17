@@ -1045,6 +1045,159 @@ class LifecycleTests(unittest.TestCase):
     def test_package_templates_and_descriptions_are_capped(self):
         self.assertEqual(len(self.lc.package_check()), 7)
 
+    def package_fixture(self, version):
+        root = self.root / 'package'
+        shutil.copytree(SCRIPT.parents[2], root / 'skills', dirs_exist_ok=True)
+        for directory in ('.claude-plugin', '.codex-plugin'):
+            (root / directory).mkdir(exist_ok=True)
+            (root / directory / 'plugin.json').write_text(json.dumps({'version': version}))
+        (root / 'marketplace.json').write_text(json.dumps({'plugins': [{'version': version}]}))
+        script = root / 'skills/cykl-start/scripts/lifecycle.py'
+        script.write_text(script.read_text().replace("VERSION = '3.0.1'", f'VERSION = {version!r}'))
+        for skill in (root / 'skills').glob('cykl-*/SKILL.md'):
+            text = skill.read_text()
+            marker = next(line for line in text.splitlines() if line.startswith('<!-- cykl-lifecycle v'))
+            skill.write_text(text.replace(marker, f'<!-- cykl-lifecycle v{version} -->'))
+        return root
+
+    def test_package_accepts_candidate_version_bump(self):
+        project = self.init()
+        for version in ('3.0.2', '3.1.0', '4.0.0', '3.0.10', '3.0.2-rc.1', '3.0.1+build.01'):
+            with self.subTest(version=version):
+                root = self.package_fixture(version)
+                proc = subprocess.run([sys.executable, '-B', str(SCRIPT), 'check',
+                    '--package', '--root', str(root)], capture_output=True)
+                self.assertEqual(proc.returncode, 0, proc.stderr.decode())
+                candidate = root / 'skills/cykl-start/scripts/lifecycle.py'
+                proc = subprocess.run([sys.executable, '-B', str(candidate), 'context',
+                    '--root', str(project)], capture_output=True)
+                self.assertEqual(proc.returncode, 0, proc.stderr.decode())
+                self.assertIn(b'Deliver a change', proc.stdout)
+
+    def test_project_check_enforces_package_checks(self):
+        ancestors = [self.root / name for name in ('left', 'right', 'base')]
+        for ancestor in ancestors:
+            ancestor.mkdir()
+        for merge in (False, True):
+            for defect, error in (('downgrade', 'downgrade'), ('marker', 'skill version'),
+                                  ('claude', 'missing file'), ('codex', 'missing file'),
+                                  ('history', 'raw history'), ('count', 'seven skills'),
+                                  ('constant', 'VERSION'), ('marketplace', 'marketplace')):
+                with self.subTest(merge=merge, defect=defect):
+                    root = self.package_fixture('3.0.0' if defect == 'downgrade' else '3.0.1')
+                    if not (root / 'PROJECT_CONFIG.md').exists():
+                        self.lc.checkpoint(root, self.draft(), 'absent')
+                    skill = root / 'skills/cykl-start/SKILL.md'
+                    if defect == 'marker':
+                        skill.write_text(skill.read_text().replace('v3.0.1 -->', 'v3.0.0 -->'))
+                    elif defect in ('claude', 'codex'):
+                        (root / f'.{defect}-plugin/plugin.json').unlink()
+                    elif defect == 'history':
+                        skill.write_text(skill.read_text() + '\ngh issue view\n')
+                    elif defect == 'count':
+                        skill.unlink()
+                    elif defect == 'constant':
+                        script = root / 'skills/cykl-start/scripts/lifecycle.py'
+                        script.write_text(script.read_text().replace("VERSION = '3.0.1'", "VERSION = '3.0.0'"))
+                    elif defect == 'marketplace':
+                        (root / 'marketplace.json').write_text('{"plugins": [{"version": "9.9.9"}]}')
+                    command = [sys.executable, '-B', str(SCRIPT), 'check', '--root', str(root)]
+                    if merge:
+                        command += ['--merge-result', '--parent', str(ancestors[0]),
+                                    '--parent', str(ancestors[1]), '--base', str(ancestors[2])]
+                    proc = subprocess.run(command, capture_output=True)
+                    self.assertEqual(proc.returncode, 1, proc.stdout.decode())
+                    self.assertIn(error, proc.stderr.decode())
+
+    def test_project_check_accepts_package_and_standalone_adopter(self):
+        root = self.package_fixture('3.0.2')
+        self.lc.checkpoint(root, self.draft(), 'absent')
+        adopter = self.init('adopter')
+        script = adopter / 'skills/cykl-start/scripts/lifecycle.py'
+        script.parent.mkdir(parents=True)
+        shutil.copyfile(SCRIPT, script)
+        for project in (root, adopter):
+            proc = subprocess.run([sys.executable, '-B', str(SCRIPT), 'check',
+                '--root', str(project)], capture_output=True)
+            self.assertEqual(proc.returncode, 0, proc.stderr.decode())
+
+    def test_package_requires_codex_manifest_and_exact_version(self):
+        root = self.package_fixture('3.0.1')
+        manifest = root / '.codex-plugin/plugin.json'
+        for data in ({'version': '1.0.0'}, {'version': '9.9.9'},
+                     {'version': '3.0.1+build.1'}, {}, [], None):
+            with self.subTest(data=data):
+                manifest.write_text(json.dumps(data))
+                with self.assertRaisesRegex(ValueError, 'codex'):
+                    self.lc.package_check(root)
+        manifest.unlink()
+        with self.assertRaisesRegex(ValueError, 'missing file'):
+            self.lc.package_check(root)
+
+    def test_package_checks_optional_marketplace_versions(self):
+        root = self.package_fixture('3.0.1')
+        marketplace = root / 'marketplace.json'
+        for data in ({'plugins': [{'version': '9.9.9'}]},
+                     {'plugins': [{'version': '3.0.1'}, {'version': '3.0.1+build.1'}]},
+                     {'plugins': [{}]}, {'plugins': [None]}, {'plugins': {}}, {}, []):
+            with self.subTest(data=data):
+                marketplace.write_text(json.dumps(data))
+                with self.assertRaisesRegex(ValueError, 'marketplace'):
+                    self.lc.package_check(root)
+        marketplace.unlink()
+        self.assertEqual(len(self.lc.package_check(root)), 7)
+
+    def test_package_rejects_bump_without_module_version(self):
+        root = self.package_fixture('3.0.2')
+        shutil.copyfile(SCRIPT, root / 'skills/cykl-start/scripts/lifecycle.py')
+        with self.assertRaisesRegex(ValueError, 'VERSION'):
+            self.lc.package_check(root)
+
+    def test_package_requires_one_literal_module_version_without_execution(self):
+        root = self.package_fixture('3.0.1')
+        script = root / 'skills/cykl-start/scripts/lifecycle.py'
+        original = script.read_text()
+        assignment = "VERSION = '3.0.1'"
+        for replacement in ('', assignment + '\n' + assignment,
+                            'def decoy():\n    ' + assignment,
+                            '"""\n' + assignment + '\n"""',
+                            "VERSION = '3.0.' + '1'", "VERSION: str = '3.0.1'",
+                            "VERSION = other = '3.0.1'", "VERSION = ("):
+            with self.subTest(replacement=replacement):
+                script.write_text(original.replace(assignment, replacement))
+                with self.assertRaisesRegex(ValueError, 'VERSION'):
+                    self.lc.package_check(root)
+        script.write_text(original + '\nraise RuntimeError("candidate must not execute")\n')
+        self.assertEqual(len(self.lc.package_check(root)), 7)
+
+    def test_package_rejects_marker_mismatch(self):
+        root = self.package_fixture('3.0.1')
+        skill = root / 'skills/cykl-start/SKILL.md'
+        original = skill.read_text()
+        for text in (original.replace('v3.0.1 -->', 'v3.0.2 -->'),
+                     original + '\n<!-- cykl-lifecycle v3.0.2 -->\n'):
+            with self.subTest(text=text[-100:]):
+                skill.write_text(text)
+                with self.assertRaisesRegex(ValueError, 'skill version'):
+                    self.lc.package_check(root)
+
+    def test_package_rejects_version_downgrade(self):
+        for version in ('3.0.0', '2.99.99', '3.0.1-rc.1', '3.0.0+build.99'):
+            with self.subTest(version=version):
+                root = self.package_fixture(version)
+                with self.assertRaisesRegex(ValueError, 'downgrade'):
+                    self.lc.package_check(root)
+
+    def test_package_requires_valid_manifest_semver(self):
+        root = self.package_fixture('3.0.1')
+        manifest = root / '.claude-plugin/plugin.json'
+        for version in ('3.0', 'v3.0.1', '03.0.1', '3.0.1-01', '3.0.1-rc..1',
+                        '3.0.1+', '3.0.1\n', '３.0.1', '', None, 3, ['3.0.1']):
+            with self.subTest(version=version):
+                manifest.write_text(json.dumps({'version': version}))
+                with self.assertRaisesRegex(ValueError, 'semver'):
+                    self.lc.package_check(root)
+
     def test_merge_of_migration_with_large_v2_config(self):
         base = self.root / 'base'
         base.mkdir()
@@ -1244,6 +1397,8 @@ class LifecycleTests(unittest.TestCase):
             root = self.init('candidate-' + str(package))
             if package:
                 shutil.copytree(SCRIPT.parents[2], root / 'skills')
+                shutil.copytree(SCRIPT.parents[3] / '.claude-plugin', root / '.claude-plugin')
+                shutil.copytree(SCRIPT.parents[3] / '.codex-plugin', root / '.codex-plugin')
             (root / path).parent.mkdir(parents=True)
             (root / path).write_bytes((trusted / path).read_bytes())
             command = [sys.executable, '-B', str(SCRIPT), 'check', '--root', str(root),
