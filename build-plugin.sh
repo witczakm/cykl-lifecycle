@@ -21,12 +21,29 @@ SKILLS_ZIP="cykl-lifecycle-skills.zip"
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
 
+python3 -B - <<'PY'
+import json
+from pathlib import Path
+import re
+
+version = json.loads(Path('.claude-plugin/plugin.json').read_text())['version']
+skills = list(Path('skills').glob('cykl-*/SKILL.md'))
+for skill in skills:
+    markers = re.findall(r'<!-- cykl-lifecycle v([^ ]+) -->', skill.read_text())
+    if markers != [version]:
+        raise SystemExit('version mismatch: plugin manifest and ' + str(skill))
+if len(skills) != 7:
+    raise SystemExit('version check requires seven skills')
+PY
+
 # 1. Staging — dokładnie to, co ma trafić do paczki
 mkdir -p "$STAGE/.claude-plugin"
 cp packaging/plugin-README.md "$STAGE/README.md"   # UWAGA: inny plik niż README.md repo
 cp .claude-plugin/plugin.json "$STAGE/.claude-plugin/plugin.json"
 cp -R skills "$STAGE/skills"
 find "$STAGE" -name '.DS_Store' -delete
+find "$STAGE" -name '__pycache__' -type d -prune -exec rm -rf {} +
+find "$STAGE" -name '*.pyc' -delete
 
 # 2. Pakowanie (-X = bez atrybutów systemu plików, powtarzalny wynik)
 rm -f "$OUT"
@@ -77,7 +94,7 @@ unzip -tq "$SKILLS_ZIP"
 unzip -q "$SKILLS_ZIP" -d "$VZ"
 
 # W korzeniu archiwum ma być dokładnie 7 katalogów cykl-* i ani jednego "skills"
-top_dirs="$(find "$VZ" -maxdepth 1 -mindepth 1 -type d -printf '%f\n' | sort)"
+top_dirs="$(find "$VZ" -maxdepth 1 -mindepth 1 -type d -exec basename {} \; | sort)"
 top_count="$(printf '%s\n' "$top_dirs" | grep -c '^cykl-' || true)"
 
 [ "$top_count" -eq 7 ] \

@@ -1,51 +1,29 @@
 ---
 name: cykl-lekcja
-description: Złap wniosek dotyczący TEGO projektu i dopisz go do LESSONS_CANON projektu (lekcja wykonawcza W lub fundamentalna F). Użyj gdy użytkownik pisze "/lekcja", "zapisz lekcję", "to na przyszłość", "wniosek z tego", "następnym razem inaczej", albo gdy w trakcie pracy pojawi się powtarzalna nauka specyficzna dla tego projektu. Jeśli wniosek dotyczy KAŻDEGO projektu użytkownika — użyj zamiast tego /lekcja-g. NIE używaj gdy mowa o lekcji w sensie edukacyjnym (plan lekcji, kurs, nauka języka, lekcja muzyki) — skill zapisuje wnioski projektowe, nie materiały edukacyjne.
+description: "Record a project lesson with evidence; /lekcja; English alias: /lesson."
 ---
-<!-- cykl-lifecycle v2.8.2 -->
+<!-- cykl-lifecycle v3.0.0 -->
 
-# /lekcja — wniosek projektowy
+# cykl-lekcja
 
-## Cel
+Read `context --root "$PROJECT" --skill cykl-lekcja`. Form one rule, its precedent
+and operational test. Assign a stable L-* ID in DECISIONS, with explicit scope and status.
+Prepare only the new row as JSON with id, kind="lesson", status, scope, supersedes="-",
+and text (rule, precedent and test). Run
+`decisions add --root "$PROJECT" --input "$ROW" --expected "$HASH"`.
+The locked writer retains the existing index internally and returns only the new index
+line and checkpoint card. No whole-index read or replacement is needed. Add a NOW
+reference through checkpoint only when applicable, using the returned hash. Never
+reuse IDs. Say saved only after acknowledgement. Use archived scope for historical lessons.
 
-Złapać wniosek od razu, gdy się pojawi, i dopisać go do docs/LESSONS_CANON.md tego projektu —
-żeby nauka nie zginęła do końca sesji i żeby błąd nie wrócił.
+Resolve LIFECYCLE to the installed sibling `cykl-start/scripts/lifecycle.py`; PROJECT
+is the selected project root. Install all seven skills together. Execute the script;
+do not load its source into context. Python 3.9+ is required.
 
-## Najpierw rozstrzygnij zasięg
-
-Zanim zapiszesz: "Czy ta lekcja byłaby prawdziwa w INNYM projekcie użytkownika?"
-
-- TAK → globalna → przerwij i użyj /lekcja-g.
-- NIE, ale obowiązuje w przyszłych sprintach → projektowa → zapisz (kroki niżej).
-- NIE, dotyczy tylko bieżącego zadania → lokalna → nie zapisuj do kanonu, wystarczy notatka. Kanon to rzeczy trwałe.
-- Granica niepewna → zapytaj użytkownika.
-
-## Kroki (lekcja projektowa)
-
-1. Sformułuj w formacie kanonu:
-   - Reguła — 1 zdanie, co robić.
-   - Dlaczego — precedent: co się stało, że ta lekcja powstała.
-   - Test operacyjny — jak sprawdzić, że ją stosuję.
-
-2. Zapisz do docs/LESSONS_CANON.md:
-   - Nowy wpis W{kolejny numer} (wykonawcza — typowe) lub F{kolejny od F10} (fundamentalna — rzadkie). F1-F6 to baseline z /kickoff; projektowe F numeruj od F10 (F7-F9 = bufor i wizualna granica).
-   - Numer ustal sprawdzając najwyższy istniejący. Przy równoległej sesji — potwierdź numer z użytkownikiem.
-   - **Miejsce wstawki: koniec Części II, PRZED `## Changelog`** — nigdy koniec pliku. Lekcja za
-     changelogiem to lekcja, której `/start` nie czyta (zdarzyło się 32 razy w jednym projekcie).
-   - Dopisz wiersz changelogu + zsynchronizuj nagłówek (Wersja + Ostatnia aktualizacja).
-   - Uruchom `python3 <katalog skilla cykl-start>/scripts/porzadek.py <katalog projektu>` — test
-     „brak lekcji za Changelogiem" musi być PASS.
-
-3. Pokaż użytkownikowi, co dopisałeś (informacyjnie — nie wymaga zgody).
-
-## Zasady
-
-- Lokalna lekcja nie idzie do kanonu — nie zaśmiecaj go jednorazówkami.
-- Format Reguła/Dlaczego/Test jest obowiązkowy — bez "dlaczego" i "testu" lekcja staje się martwa.
-- Precedens w "Dlaczego" podawaj liczbą z pomiaru, nie przymiotnikiem ("0 z 131 rekordów", nie "prawie żadne").
-- Nie wykonuj git. Commit zbiorczo przy /zamknij.
-
-## Powiązane
-
-- /lekcja-g — wniosek globalny (poza projekt, zawsze za zgodą).
-- /zamknij — używa tej samej logiki przy zbiorczym wyciąganiu lekcji.
+Read only `context` output (16,384 UTF-8 bytes total). Additional named files use
+`context --file PATH`, inside that same cap. Index/history retrieval uses bounded
+helper commands; no whole-index/history reads or recursive reference expansion.
+All lifecycle writes use checkpoint, decisions add or migrate; never direct edits or v2 cleanup.
+Use exact expected hashes, and keep returned acknowledgement cards before compaction.
+Offline continues only an already-dispatched packet in this shared worktree; no new
+assignment, scope change, acceptance or publication. Mirroring is disabled by default.

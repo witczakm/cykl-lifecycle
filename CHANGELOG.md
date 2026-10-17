@@ -4,6 +4,57 @@ All notable changes to cykl-lifecycle are documented here.
 
 ---
 
+## [3.0.0] — 2026-10-17
+
+### Added
+- One stdlib `lifecycle.py`: check, checkpoint, context, decisions, reviewed migration,
+  bounded archive retrieval and interrupted-write recovery. No git/network calls.
+- Two-parent plus merge-base obligation/decision reconciliation, strict byte caps,
+  atomic worktree lock and checkpoint acknowledgement cards.
+- Generic NOW/DECISIONS templates, synthetic unittest regression suite, staged-tree
+  pre-commit sample and trusted-validator `lifecycle-integrity` workflow.
+
+### Fixed during implementation review
+- Synthetic merge validation preserves parent/base record accounting without demanding
+  an impossible NOW parent list. Workflow SHA-256 comparison and mandatory external
+  protection requirements cover workflow replacement within their stated trust boundary.
+- Simplified merge accounting to ID retention or an explicit closing line (ID + reason)
+  for obligations from either parent or merge-base. Removed record fingerprint equality;
+  metadata, ordering, timestamps and settled rows are ignored. Historical source hashes
+  no longer block the next PR after a settled update; silent drops still fail.
+- Packets require archive/index exclusions; context normalizes paths and rejects
+  unlisted decision bodies. Locked `decisions add` needs only a new row from the agent.
+- Executable migration rollback reconstructs sources into a new directory. Inventory
+  writes a full plan file and prints a bounded path/hash/count summary.
+- Checkpoint cards reread promoted NOW; builds reject manifest/skill version mismatch.
+- Local research, inventory, red-team and implementation review notes are ignored.
+
+### Breaking changes
+- NOW replaces growing HANDOFF snapshots. DECISIONS stores decisions and lessons;
+  skills consume bounded projections. All seven cykl-* names remain, with English text.
+- `porzadek.py` refuses every call (exit 2, no writes). Upgrade all installed readers and
+  writers before migration. No startup cleanup or first-Snapshot selection.
+- The sole writer is lifecycle.py. Facts count as saved only after UUID/hash acknowledgement.
+- Offline continuation requires an already-dispatched packet in one shared worktree.
+  GitHub synchronization is manual; pin mirroring is disabled by default.
+
+### Migration guide
+1. Run `migrate --root PROJECT --output PLAN` to write a new plan outside the project
+   (no project writes; stdout contains path/hash/count, not the full plan).
+2. Review every source range and checklist entry. Map active O/A facts to NOW and D/L
+   facts to DECISIONS. A-* also require matching attempt and packet files in `draft.files`;
+   classify only the remaining history as archived. Review privacy,
+   issue URL attachments, source hashes and all legacy readers/writers.
+3. Validate `migrate --root PROJECT --plan PLAN`, then explicitly pass `--apply`.
+   Exact source reconstruction and extraction checks must pass. Archives remain grep-able.
+4. Install the hook/Action, configure required checks and a blocked canary per repository.
+   Protection stays unverified until evidenced. See README for recovery and rollback.
+
+### Removed
+- Proposed event log, transaction pages, runtime tokenizer, per-obligation continuity
+  JSON and permanent release exports. Byte limits are the single runtime budget.
+- Full NOW-to-pin mirroring. Future opt-in publication must use a reviewed public-safe subset.
+
 ## [2.8.2] — 2026-09-27
 
 ### Added

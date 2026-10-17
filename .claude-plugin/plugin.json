@@ -1,11 +1,17 @@
 {
   "name": "cykl-lifecycle",
-  "version": "2.8.2",
-  "description": "Pamięć projektu dla agentów AI — 7 komend do prowadzenia projektów wielosesyjnych. Stan żyje w plikach: /start wczytuje gdzie jesteś, /zamknij zapisuje postęp. Działa w Cowork, Claude Code i Codex.",
+  "version": "3.0.0",
+  "description": "Seven English lifecycle skills with bounded checkpoints, reviewed migration and merge-result integrity checks.",
   "author": {
     "name": "Michał Witczak"
   },
   "homepage": "https://github.com/witczakm/cykl-lifecycle",
   "license": "MIT",
-  "keywords": ["productivity", "project-management", "multi-session", "polish", "cykl"]
+  "keywords": [
+    "productivity",
+    "project-management",
+    "multi-session",
+    "polish",
+    "cykl"
+  ]
 }

@@ -1,365 +1,197 @@
-# cykl-lifecycle
+# cykl-lifecycle 3.0.0
 
-> **Pamięć projektu dla agentów AI.** Prowadź jeden projekt przez dziesiątki sesji z Claude lub Codex — model na starcie każdej sesji wie, gdzie skończyłeś i co jest następne.
->
-> *Multi-session memory for AI coding agents. Works with Claude Code, OpenAI Codex & Claude Cowork. Polish-language skills.*
->
-> 🇬🇧 English version: **[witczakm/cycle-lifecycle](https://github.com/witczakm/cycle-lifecycle)**
+Seven English skills for project memory across sessions. Canonical names stay `cykl-*`.
+One stdlib Python script writes bounded checkpoints; GitHub remains task/release authority.
 
-[![Version](https://img.shields.io/badge/version-2.8.2-blue)](CHANGELOG.md)
-[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![Platformy](https://img.shields.io/badge/platformy-Claude%20Code%20%C2%B7%20Codex%20%C2%B7%20Cowork-orange)](#instalacja--wybierz-narz%C4%99dzie)
-[![Format](https://img.shields.io/badge/format-Agent%20Skills-blueviolet)](https://agentskills.io)
-[![Język](https://img.shields.io/badge/j%C4%99zyk-polski-red)](#)
-
----
-
-## Po co to jest
-
-Agenci AI (Claude Code, OpenAI Codex) nie pamiętają poprzednich rozmów. Przy projekcie, który trwa tygodnie, każdą sesję zaczynasz od tłumaczenia od nowa: *„gdzie skończyliśmy, co już zrobione, co dalej…"*. Tracisz na to czas — a często i jakość, bo prowadzenie całego projektu w jednym, gigantycznym wątku psuje odpowiedzi i pali tokeny.
-
-**cykl-lifecycle** to 7 komend, które dają projektowi pamięć. Stan zapisujesz do plików po każdej sesji i wczytujesz na starcie następnej. Zamiast tłumaczyć kontekst, wpisujesz `/start` i w pół minuty masz pełny obraz: na którym jesteś etapie, co ostatnio zamknięte i jaki jest **jeden** następny ruch.
-
-## Jak to działa — pętla
-
-```
-   /kickoff   (raz — zakłada projekt)
-      │
-      ▼
-   /start  ──►   praca   ──►  /zamknij        ◄── tak wygląda każda sesja
- (wczytaj stan)            (zapisz stan)
-      ▲                          │
-      └──────────────────────────┘
-        następna sesja czyta to, co poprzednia zapisała
-```
-
-Stan żyje w **plikach** projektu (`HANDOFF`, `ROADMAP`, `LESSONS`), nie w przewijaniu czatu. Dlatego możesz zamknąć rozmowę, wrócić za tydzień, wpisać `/start` i kontynuować bez gubienia kontekstu.
-
-## Czy to dla Ciebie?
-
-✅ **Tak**, jeśli:
-- projekt potrwa dłużej niż 2–3 sesje,
-- pracujesz nad czymś złożonym (aplikacja, dokumentacja, badania, analiza),
-- chcesz mieć pewność, że postęp jest zapisany i nic nie ginie.
-
-❌ **Raczej nie**, jeśli:
-- to jednorazowe zadanie na jeden raz,
-- projekt jest prosty i dobrze go pamiętasz.
-
----
-
-## Dopiero zaczynasz z AI? Minuta teorii
-
-Jeśli te narzędzia są dla Ciebie nowe — oto wszystko, czego potrzebujesz, żeby zrozumieć resztę:
-
-- **Agent AI w terminalu** — program, który rozmawia z Tobą i edytuje pliki na Twoim komputerze. Dwa popularne: **Claude Code** (Anthropic) i **OpenAI Codex**. **Claude Cowork** to wersja na pulpit, bez terminala.
-- **Skill** — plik z instrukcją (`SKILL.md`), który uczy agenta jednej powtarzalnej rzeczy. Agent sam go uruchamia, gdy pasuje do tego, co piszesz. To otwarty standard ([agentskills.io](https://agentskills.io)) — ten sam format działa w Claude i w Codeksie.
-- **cykl-lifecycle** = 7 takich skilli, które razem dają projektowi pamięć między sesjami.
-
-Komendy (`/start`, `/zamknij`…) wpisujesz po prostu w rozmowie z agentem.
-
----
-
-## 7 komend
-
-| Komenda | Kiedy | Co robi |
+| Skill | Purpose | Descriptive English alias |
 |---|---|---|
-| `/kickoff` | raz, na start projektu | zakłada strukturę i pyta o etapy |
-| `/start` | na początku **każdej** sesji | wczytuje stan, mówi gdzie jesteś |
-| `/zamknij` | na koniec każdej sesji | zapisuje postęp, szykuje commit |
-| `/migawka` | po ważnej decyzji w środku sesji | lekki zapis stanu |
-| `/roadmap` | gdy chcesz zobaczyć postęp | pokazuje etapy i kroki |
-| `/lekcja` | gdy wyciągniesz wniosek z pracy | zapisuje naukę do projektu |
-| `/lekcja-g` | gdy wniosek dotyczy wszystkich projektów | zapisuje globalnie (za zgodą) |
+| cykl-kickoff | Initialize a new project | /kickoff |
+| cykl-start | Validate and resume | /start |
+| cykl-migawka | Save during work | /snapshot |
+| cykl-zamknij | Save before close/compaction | /close |
+| cykl-roadmap | Show observed task/release position | /roadmap |
+| cykl-lekcja | Record a project lesson | /lesson |
+| cykl-lekcja-globalna | Propose a global lesson | /lesson-global |
 
-> **Claude:** wpisujesz `/start` albo po prostu opisujesz, czego chcesz.
-> **Codex:** wołasz przez `$nazwa` (np. `$cykl-start`) albo zdaniem („gdzie jesteśmy w projekcie?"). Komenda `/start` w Codeksie nie działa jako slash — użyj `$cykl-start`.
+Aliases appear in descriptions; they do not create duplicate skills. Install all seven
+skills together: the other six use `cykl-start/scripts/lifecycle.py`.
 
----
+## Install and use
 
-## Co nowego w 2.8.0
+Requires Python 3.9+. No Python packages, tokenizer downloads or network access are needed.
+The existing `install.sh` downloads from GitHub; for offline installation unpack the skills ZIP
+into your tool's skills directory. The `.plugin` artifact is for Claude Cowork; `.codex-plugin`
+contains Codex metadata. A terminal-capable harness is required; no Python means stop.
+Older installation/architecture guides describe v2 and are historical; use this README
+and [R2 spec](docs/design/v3.0.md) for v3 behavior.
 
-Wydanie zamienia **reguły, których nikt nie wykonywał, na skrypt, który je wykonuje**. Diagnoza na żywym projekcie po 2.7.0: próg 40 kB i „nadpisuj, nie dopisuj" stały w tekście, a HANDOFF urósł do 418 kB, PROJECT_CONFIG miał 23 nagłówki wersji, a drift był zgłaszany przez cztery kolejne sesje i nie naprawiany przez żadną.
-
-| Zmiana | Dlaczego |
-|---|---|
-| **`scripts/porzadek.py`** (w `cykl-start`): `/start` uruchamia go z `--wykonaj` przy pierwszym poleceniu w sesji; `/zamknij`, `/migawka`, `/lekcja` używają go jako bramki. Przenosi historię do `docs/archive/`, zostawia jeden blok bieżący i 5 wierszy changelogu, wraca lekcje zabłąkane za changelog, drukuje tabelę PASS/FAIL. Nic nie kasuje, jest idempotentny. | Reguła bez egzekucji maszynowej gnije — sprawdzone na czterech sesjach. Skrypt na tym samym projekcie: HANDOFF 418 → 6,5 kB, CONFIG 49 → 8,7 kB w jednym przebiegu. |
-| **Bramka commita w `/zamknij` zaczyna się od `porzadek.py`** (kod wyjścia 1 = STOP). | Dotąd bramka sprawdzała tylko datę; przepuszczała plik z 23 nagłówkami. |
-| **`/lekcja` ma stałe miejsce wstawki** — koniec Części II, przed `## Changelog`. | 32 lekcje trafiły za changelog, gdzie `/start` ich nie czyta. |
-| **Tryb orkiestratora w `/zamknij`.** | Skill zakładał człowieka wklejającego blok; w praktyce commituje prowadzący wielu wykonawców — bez bramki. |
-
-Aktualizujesz ze starszej wersji? Pierwszy `/start` po instalacji sam uporządkuje dokumenty; przejrzyj `docs/archive/` i dodaj go do commita.
-
-## Co nowego w 2.7.0
-
-Wydanie atakuje **przyczynę powracającego driftu**, nie kolejny objaw. Wcześniejsza naprawa (2.5.0) usunęła jeden mechanizm — drift wrócił, bo to była przyczyna wtórna.
-
-| Zmiana | Dlaczego |
-|---|---|
-| **Próg rozmiaru z rotacją** — `/zamknij` mierzy `wc -c`, powyżej ~40 kB archiwizuje historyczne wpisy | w realnym projekcie dokumenty stanu urosły do **316 kB** przy szablonie ważącym 2 kB. Domykający nie przegląda takiego pliku w całości, więc aktualizuje miejsca, które pamięta — a ich liczba rośnie z każdą sesją. To źródło driftu, nie objaw |
-| **Bramka spójności nagłówek ↔ changelog** przy zapisie | nagłówek i treść to dwa osobne ruchy edycyjne; kto dopisał pozycję na dole pliku, nie wrócił na górę. Dotąd wykrywał to dopiero `/start`, po fakcie |
-| **Fakt ma JEDNO miejsce** — kopia zastąpiona odwołaniem | pilnowanie kopii kosztuje coraz więcej z każdą kopią i sesją; likwidacja zdejmuje problem zamiast go administrować |
-| **Pole mierzone sondą zawiera odwołanie, nie wartość** | wartość zapisana wewnątrz commitu opisuje stan sprzed samej siebie — jest o jeden commit do tyłu z definicji. Odwołanie mierzy się przy odczycie |
-
-### Wcześniej: 2.5.0 i 2.6.0
-
-Naprawiały **mechanizmy**, nie opisy. Wspólny mianownik: reguła istniała, ale nic jej nie egzekwowało.
-
-| Zmiana | Dlaczego |
-|---|---|
-| **Bramka commita jest mechaniczna** — `set -euo pipefail` + `&&`, nie komentarz | warunek „nie commituj, jeśli…" był adnotacją w bloku; człowiek wkleja blok naraz, więc `git commit` wykonywał się mimo niespełnionego warunku |
-| **`/start` mierzy stan poza dokumentami** — nowe pole `STATE_PROBE` | drift-check porównywał dokumenty wyłącznie ze sobą, a trzy dokumenty potrafią zgodnie powtarzać tę samą nieprawdę. Spójność wewnętrzna to nie prawdziwość |
-| **Pola stanowe są NADPISYWANE po pomiarze**, nie dopisywane | w realnym projekcie pole „stan repo" spuchło przez sześć sesji do 1369 znaków i niosło trzy sprzeczne stany z trzech dat — czytający brał pierwszy, czyli najstarszy |
-| **Bramka wyjścia etapu jest sprawdzana** przy flipie na DONE | kolumna istniała w szablonie ROADMAP od 2.0, ale żaden skill jej nie czytał |
-| **Biała lista komend gita** — zakaz `git status`, `git add --dry-run`, `git stash` | tworzą `.git/index.lock`, którego mosty zdalne (Cowork / device bridge) nie potrafią usunąć — potrafi zablokować repo na kilka dni |
-
-Pełna lista zmian: **[CHANGELOG.md](CHANGELOG.md)**. Dlaczego akurat tak, z precedensami każdej decyzji: **[docs/ARCHITEKTURA-DECYZJE.md](docs/ARCHITEKTURA-DECYZJE.md)**.
-
----
-
-## Instalacja
-
-### ⚡ Jedną komendą — wprost z GitHuba (Claude Code / Codex)
-
-**Codex + Claude (oba naraz):**
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/witczakm/cykl-lifecycle/main/install.sh | bash
+```sh
+LIFECYCLE=/path/to/skills/cykl-start/scripts/lifecycle.py
+python3 "$LIFECYCLE" check --root /path/to/project
+python3 "$LIFECYCLE" context --root /path/to/project --skill cykl-start
+python3 "$LIFECYCLE" decisions --root /path/to/project
 ```
 
-**Tylko Codex:**
+For a new project, create a draft using the JSON in
+[NOW.template.md](skills/cykl-kickoff/assets/NOW.template.md), then:
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/witczakm/cykl-lifecycle/main/install.sh | bash -s -- codex
+```sh
+python3 "$LIFECYCLE" checkpoint --root /path/to/project --input /tmp/draft.json --expected absent
 ```
 
-**Tylko Claude:**
+Subsequent writes pass the current `content_sha256` instead of `absent`. Drafts may include
+`decisions` (complete index text) and `files` (managed path → text). Only the script writes
+lifecycle files. Preserve unresolved IDs. Close/supersede needs an ID and a reason and,
+for supersession, a surviving successor. The returned UUID/hash card is the
+acknowledgement that facts are saved; include it before compaction. Read failures stop work.
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/witczakm/cykl-lifecycle/main/install.sh | bash -s -- claude
+To append a decision or lesson, submit only its new row as JSON; the locked writer retains
+the existing index internally and returns the new index line plus a checkpoint card:
+
+```json
+{"id":"L-example","kind":"lesson","status":"accepted","scope":"project","supersedes":"-","text":"Rule; precedent; operational test"}
 ```
 
-Skrypt pobiera 7 skilli **wprost z repo** i kopiuje do `~/.claude/skills` i/lub `~/.agents/skills` — nic nie ściągasz ręcznie. Potem zrestartuj agenta i wpisz `/kickoff` (Claude) albo `$cykl-kickoff` (Codex). Nie masz Codeksa? `npm install -g @openai/codex`.
-
-> Chcesz zobaczyć, co odpalasz? Otwórz [`install.sh`](install.sh) — kilkanaście linii. (`curl … | bash` uruchamia kod z sieci; rób to tylko z zaufanych repo — np. swojego.)
-
-### ▶ Claude Cowork (desktop) — najprościej, jeden plik
-
-Pobierz **[`cykl-lifecycle.plugin`](https://github.com/witczakm/cykl-lifecycle/raw/main/cykl-lifecycle.plugin)** (klik = pobranie pliku) i **otwórz go w Cowork** — przeciągnij plik do rozmowy; pokaże się przycisk **Zainstaluj**, który wgra **wszystkie 7 skilli naraz**. Potem wpisz `/kickoff`. Bez pobierania repo, bez dodawania folderów po kolei.
-
-Wariant zapasowy (ręcznie): **Settings → Capabilities → Skills → Add skill** → dodaj 7 folderów `skills/cykl-*` osobno.
-
-### ▶ Claude.ai (web / mobile)
-
-**Settings → Capabilities → Skills → Add skill** (7 folderów osobno). Wersja web nie ma dostępu do plików — pomoże w planowaniu, ale zapis do plików projektu wymaga Cowork, Claude Code lub Codeksa.
-
-### ▶ Z gotowej paczki ZIP (bez gita, bez skryptu)
-
-Pobierz **[`cykl-lifecycle-skills.zip`](https://github.com/witczakm/cykl-lifecycle/releases/latest/download/cykl-lifecycle-skills.zip)** z najnowszego wydania i rozpakuj **wprost do katalogu skilli** — archiwum zawiera 7 folderów `cykl-*` w korzeniu, więc nie trzeba niczego przenosić:
-
-**Claude Code:**
-
-```bash
-mkdir -p ~/.claude/skills && unzip -o cykl-lifecycle-skills.zip -d ~/.claude/skills/
+```sh
+python3 "$LIFECYCLE" decisions add --root /path/to/project --input /path/to/row.json --expected HASH
 ```
 
-**Codex:**
+Duplicate or previously closed IDs are refused. Add a NOW reference with a subsequent
+checkpoint when needed. Agents never need a whole-index read or replacement for an append.
 
-```bash
-mkdir -p ~/.agents/skills && unzip -o cykl-lifecycle-skills.zip -d ~/.agents/skills/
+NOW is capped at 4,096 UTF-8 bytes. All helper responses share a 16,384-byte cap; extra
+files use `context --file PATH`. Decisions are projected, never loaded whole by skills.
+There is no token-count guarantee. Unwritten thoughts and arbitrary harness reads are
+outside this enforcement boundary.
+
+## Migration from v2 (breaking)
+
+Upgrade **every** installed writer first. `porzadek.py` now always exits 2 without writes.
+There is no automatic cleanup on startup and no automatic “newest Snapshot” guess.
+Work on a reviewed copy; never migrate private project data into this public skills repo.
+
+```sh
+python3 "$LIFECYCLE" migrate --root /path/to/project --output /path/outside/project/migration-plan.json
+# Review and edit the plan outside the project, then validate without applying:
+python3 "$LIFECYCLE" migrate --root /path/to/project --plan /path/outside/project/migration-plan.json
+python3 "$LIFECYCLE" migrate --root /path/to/project --plan /path/outside/project/migration-plan.json --apply
 ```
 
-`-o` nadpisuje istniejące pliki, więc ta sama komenda służy do instalacji i do aktualizacji.
+Inventory writes the full plan to that new file, never into the project, and prints only
+its path, SHA-256 and source count. Without `--output`, it creates a unique plan in the
+system temporary directory. Existing outputs and symlink paths are refused. Plan files
+are not subject to the helper stdout cap. A reviewed `--plan` without `--apply` is read-only.
 
-### ▶ Instalacja ręczna (z klonu repo)
+The initial plan has unresolved source ranges and checklist entries. For each source,
+partition every line exactly once. Each range needs `start`, `end`, `disposition` and
+`reason`. Active ranges also need an ID; decisions/lessons may specify scope:
 
-Pobierz repo (**Code → Download ZIP** albo `git clone`), wejdź do folderu `cykl-lifecycle` i wgraj skille.
-
-**Claude Code:**
-
-```bash
-mkdir -p ~/.claude/skills && cp -r skills/cykl-* ~/.claude/skills/
+```json
+{"start":1,"end":2,"disposition":"active","id":"O-constraint","reason":"Still required"}
 ```
 
-**Codex:**
+O-* obligations and A-* attempts go into NOW; D-* decisions and L-* lessons go into
+DECISIONS. A-* also require matching attempt/packet files in draft.files. Historical
+ranges use `disposition: "archived"`. D/L scope defaults to `archived`; promote a binding
+rule explicitly to `project`. Set repo/branch/goal in draft. Fill all review checklist
+entries with evidence: active facts, ambiguous snapshots, issue URLs, readers, writers,
+privacy. Existing AGENTS/CLAUDE files require explicit bounded `replacements` preserving
+applicable instructions. Known secret hits need `acknowledgements: {"line": "ACK-review-id"}`;
+review hashes and privacy manually too. The scanner cannot prove publication safety.
 
-```bash
-mkdir -p ~/.agents/skills && cp -r skills/cykl-* ~/.agents/skills/
+Apply verifies all hashes and extraction before replacing sources. Only remaining history
+becomes plain UTF-8 chunks; the manifest records paths, lines, hashes, extracted facts and
+review evidence. Original bytes, including CRLF and missing final newline, reconstruct
+exactly. Source drift, gaps, duplicates, ambiguity and cap overflow block apply.
+A fact incorrectly classified as historical remains a human review failure.
+
+```sh
+python3 "$LIFECYCLE" archive show --root /path/to/project --source docs/HANDOFF.md --lines 1-20
 ```
 
-> Szczegóły i troubleshooting: **[docs/INSTALL-claude.md](docs/INSTALL-claude.md)** · **[docs/INSTALL-codex.md](docs/INSTALL-codex.md)**.
+Archives stay grep-able. Use bounded line ranges for agent retrieval. For rollback,
+run the executable reconstruction command:
 
-### 🔄 Masz już starszą wersję?
-
-Sprawdź, co jest zainstalowane:
-
-```bash
-grep -h "cykl-lifecycle v" ~/.claude/skills/cykl-*/SKILL.md | sort -u   # Claude Code
-grep -h "cykl-lifecycle v" ~/.agents/skills/cykl-*/SKILL.md | sort -u   # Codex
+```sh
+python3 "$LIFECYCLE" migrate --root /path/to/project --rollback --dest /path/to/new-recovery-directory
 ```
 
-Więcej niż jedna linia = wymieszane wersje, wgraj od nowa. Aktualizacja to ta sama komenda co instalacja — `install.sh` nadpisuje istniejące skille. **Zrestartuj agenta po aktualizacji**; skille ładują się na starcie sesji.
+It verifies and reconstructs every original migration source, including files larger
+than the stdout cap. It restores migration sources, not an entire historical checkout.
+The destination must be new, outside the live tree, with an existing parent and no
+symlink components. Existing, nested and ancestor destinations are refused. Live v3
+files and merge protection remain in place. A process killed during export may leave
+a partial recovery directory; use a new destination for retry.
+Repeated apply with the same plan is a no-op. If promotion is interrupted, all readers
+stop at the lock; `recover --root PATH` verifies candidate and destination hashes before
+finishing. Never steal a live lock. Before promotion there may be no descriptor: inspect
+and remove only the stale local stage/lock after proving that no live writer remains.
 
-W Cowork: pobierz świeży [`cykl-lifecycle.plugin`](https://github.com/witczakm/cykl-lifecycle/raw/main/cykl-lifecycle.plugin) i przeciągnij do rozmowy.
+## Required merge protection
 
-**2.6.0 nie łamie kompatybilności** — `STATE_PROBE` jest opcjonalne, istniejące projekty działają bez migracji. Pełne ścieżki aktualizacji per środowisko: [Claude](docs/INSTALL-claude.md#aktualizacja-do-nowszej-wersji) · [Codex](docs/INSTALL-codex.md#aktualizacja-do-nowszej-wersji).
+[Hook sample](hooks/pre-commit.sample) checks the complete staged tree, not the worktree.
+It can be bypassed and does not replace [lifecycle-integrity](.github/workflows/lifecycle-integrity.yml).
+The Action uses a trusted validator and checks the test merge against **both parents and
+merge-base**, including decisions, obligations, explicit closures and immutable archives.
+The Action uses `--merge-result`: it validates the union of both parents and merge-base
+without requiring NOW to name GitHub's synthetic commit parents. Every O/A/D/L ID in
+either parent or merge-base must remain in work/DECISIONS or have an explicit closing
+line in merged NOW (ID, close/supersede action and reason). Record text, metadata,
+ordering, timestamps, settled rows and historical source hashes are not compared.
+One-sided changes and changes on both sides pass when the ID union is retained or closed,
+as does a later PR after a settled update. Silently dropping another side's obligation fails.
+Without `--merge-result`, explicit parent/base UUID checks remain available for a
+separately authored reconciliation checkpoint against its source snapshots.
 
----
+For each adopting repository: install the validator at the same path, bootstrap a reviewed
+trusted revision (optionally `LIFECYCLE_VALIDATOR_REF` repository variable), require the
+`lifecycle-integrity` check, prohibit ordinary bypass/direct pushes, require up-to-date PRs
+or merge queue. `--trusted-root` compares the candidate workflow's SHA-256 with the
+trusted checkout and rejects replacement or deletion in project and package checks.
+Bootstrap workflow and validator together; a workflow upgrade requires an authorized
+update of the trusted version, not a PR-provided expected hash.
 
-## Pierwsze 15 minut
+**External enforcement is required:** configure a required workflow whose definition
+and revision are controlled outside the PR. If that policy is unavailable, require
+CODEOWNERS approval for `.github/workflows/**`, `.github/CODEOWNERS`, and the trusted
+validator path, dismiss stale approvals after new commits, and disallow ordinary bypass.
+Protect changes to `LIFECYCLE_VALIDATOR_REF` as well. A same-name no-op job can remove
+its own hash check; the hash comparison alone cannot prevent that attack.
+Test canaries that replace/delete the workflow and restore HANDOFF over 512 bytes;
+verify a non-admin cannot merge them. Record ruleset ID and canary evidence in
+PROJECT_CONFIG. Until then report **merge protection unverified**. This offline release
+has not configured any remote repository or tested GitHub event execution.
 
-**Sesja 1 — założenie projektu (~5 min).** Wpisz `/kickoff` (lub `$cykl-kickoff` w Codeksie). Agent zapyta o kilka rzeczy:
+Local tree checks need no git inside Python:
 
-```
-1. Nazwa projektu? (np. "Moja Aplikacja" / "moja-app")
-2. Cel? (1–2 zdania — co budujesz i dla kogo)
-3. Główne etapy? (3–7 haseł "co po kolei", np.:
-   Planowanie → Baza danych → Backend → Frontend → Testy → Deploy)
-4. Gdzie tworzyć pliki? (ścieżka do katalogu projektu)
-5. Profil? (lite = 3 pliki / standard = pełna struktura / regulated = z audytem)
-```
-
-Czegoś nie wiesz? Wpisz „nie wiem" — agent zapisze jako UNKNOWN do uzupełnienia później. Po odpowiedziach tworzy strukturę, wypełnia ROADMAP Twoimi etapami i od razu mówi, jaki jest pierwszy krok.
-
-**Każda kolejna sesja (~30 sekund na wejście).** Otwórz nową rozmowę i wpisz `/start`:
-
-```
-Pozycja: Etap 1/4 "Planowanie" · krok 1/3 "Zebranie wymagań"
-Ostatnio zamknięte: projekt założony — struktura gotowa ✓
-Następny ruch: zdefiniuj wymagania funkcjonalne (krok 1.1)
-Drift: brak.
-```
-
-Pracujesz normalnie. Na koniec wpisz `/zamknij` — dostajesz podsumowanie i gotowy blok do skopiowania: sprawdzenie, czy pliki faktycznie zeszły na dysk, a po nim `git add` + `commit`. Blok jest spięty operatorem `&&`, więc jeśli sprawdzenie nie przejdzie, commit się nie wykona.
-
----
-
-## Najważniejsza zasada: nie prowadź całego projektu w jednym wątku
-
-Najczęstszy błąd początkujących: cały, wielotygodniowy projekt w jednej, nieskończonej rozmowie. Płacisz za to **jakością i tokenami**:
-
-- Model jest bezstanowy — przy każdej wiadomości dostaje **całą** rozmowę od nowa. Im dłuższy wątek, tym drożej każda kolejna tura (koszt rośnie ~kwadratowo).
-- W długim kontekście jakość spada („context rot"): model słabiej sięga po informacje ze środka wątku i gubi się w szumie.
-
-**Dobry nawyk:** nowa rozmowa na każdą sesję — `/start` na wejściu, `/zamknij` na wyjściu. Stan żyje w plikach, więc świeży wątek niczego nie gubi. Czat to „warsztat" na jedną sesję; pamięć projektu jest w plikach.
-
----
-
-## Bezpieczeństwo (zwłaszcza w Codeksie)
-
-Codex to **agent** — wykonuje realne komendy i potrafi sięgnąć poza bieżący katalog. Zanim ruszysz na realnym projekcie:
-
-- ustaw rozsądny tryb zatwierdzania (`/approvals` w sesji),
-- **czytaj, co zatwierdzasz** — odrzucaj akcje poza projektem albo komendy systemowe (`pg_dump`, `npx`, `rm`…), których świadomie nie zleciłeś.
-
-Same skille cykla są bezpieczne: zapisują wyłącznie dokumenty stanu w katalogu projektu i **nigdy nie wykonują git mutującego** — `add`, `commit`, `push`, `stash` dostajesz jako gotowy blok do wklejenia, decyzja zostaje po Twojej stronie.
-
-Od 2.5.0 skille wykonują **komendy pomiarowe z zamkniętej białej listy** (`git rev-parse`, `git rev-list`, `git log`, `git show`, `git diff --stat`) — wyłącznie odczyt, żeby stan w dokumentach pochodził z pomiaru, a nie z przepisania. `git status`, `git add --dry-run` i `git stash` są **zakazane**: tworzą `.git/index.lock`, którego mosty zdalne nie potrafią usunąć.
-
----
-
-## Co powstaje w Twoim projekcie
-
-Po `/kickoff`:
-
-```
-projekt/
-├── PROJECT_CONFIG.md      ← parametry + live-state (co jest teraz w toku)
-└── docs/
-    ├── HANDOFF.md         ← snapshot "gdzie jesteśmy + następny krok"
-    ├── ROADMAP.md         ← postęp: etapy + kroki + Pozycja
-    └── LESSONS_CANON.md   ← kanon lekcji (F1–F6 + Twoje)
+```sh
+python3 "$LIFECYCLE" check --merge-result --root result --parent left --parent right --base merge-base
 ```
 
-| Plik | Aktualizuje | Zasada |
-|---|---|---|
-| `PROJECT_CONFIG.md` | `/migawka`, `/zamknij` | live-state + `STATE_PROBE`; pola stanowe nadpisywane po pomiarze |
-| `docs/HANDOFF.md` | `/migawka`, `/zamknij` | zawsze nadpisywany (stan „teraz") |
-| `docs/ROADMAP.md` | `/migawka`, `/roadmap`, `/zamknij` | statusy kroków, Pozycja, bramki wyjścia etapów |
-| `docs/LESSONS_CANON.md` | `/lekcja` | dopisywany, nigdy nadpisywany |
+To prepare parent/base identity and closure entries for missing IDs, replace
+`--merge-result` with `--reconcile-template`. Merge its JSON into a checkpoint draft;
+restore each missing ID or replace its REVIEW REQUIRED reason with the reason for closure.
+No source hashes are needed. Existing hash lists are accepted without comparison.
+Terminal attempts may leave NOW only after integrated/abandoned status and explicit closure.
 
-**Dwa typy pól w dokumentach stanu** — rozróżnienie wprowadzone w 2.5.0, bo ich pomylenie było najczęstszą przyczyną driftu:
+The caller must export the real tested trees; arbitrary directories are not proof of ancestry.
 
-- **dziennikowe** (changelog, nagłówek, bieżący sprint) — przyrostowe: dopisujesz warstwę, poprzednia zostaje;
-- **stanowe** (stan repo, następna otwarta decyzja, publiczny URL, hash wdrożonego artefaktu) — mają **jedną** prawdziwą wartość i są **nadpisywane w całości po pomiarze**, ze znacznikiem `[zmierzone RRRR-MM-DD HH:MM UTC]`.
+## Offline and privacy
 
-Dopisanie do pola stanowego tworzy pole z kilkoma sprzecznymi stanami, w którym czytający — człowiek albo `/start` — bierze pierwszy, czyli najstarszy.
+Only already-dispatched work continues offline, in one shared worktree. Attempt files
+supply current status; NOW holds their IDs. New assignments, scope changes, acceptance and
+publication wait for online reconciliation. GitHub API synchronization/import is manual
+in this minimal release. Prepared issue bodies, including the pin, cap at 8,192 bytes.
+Mirroring is disabled; any future opt-in mirror must select reviewed public-safe identity,
+goal, position, next action and IDs. Preserve/Risks/decision bodies stay out of the mirror.
 
-**`STATE_PROBE`** to jedna komenda read-only, którą projekt deklaruje w `PROJECT_CONFIG`; `/start` ją wykonuje i porównuje wynik z zapisanym stanem. Dla repo git będzie to `git rev-parse --short HEAD`, dla aplikacji webowej — hash zbudowanego artefaktu, dla bazy — `count` na tabeli kontrolnej. Bez sondy drift-check porównuje dokumenty wyłącznie ze sobą i nie wykryje, że są zgodnie nieaktualne.
+## Verify and build
 
----
-
-## FAQ
-
-**Muszę wpisywać `/start` ręcznie?**
-Nie. Agent zwykle odpala go sam, gdy wykryje powrót do projektu. Ale wpisanie `/start` zawsze jest bezpieczne.
-
-**Działa bez terminala?**
-Tak — w Claude Cowork (desktop) i Claude.ai (web) przez Settings → Capabilities. W web bez zapisu do plików.
-
-**Mogę używać z innymi skillami?**
-Tak. Prefiks `cykl-` i polskie triggery są projektowane pod współistnienie z anglojęzycznymi skillami technicznymi.
-
-**Mogę przetłumaczyć komendy na angielski?**
-Tak. Skille to pliki tekstowe — zmień triggery w `SKILL.md` i używaj własnych komend.
-
-**Gdzie ląduje `/lekcja-g` (lekcja globalna)?**
-Claude Code → `~/.claude/context/lessons.md`. Codex → `~/.codex/AGENTS.md`. Cowork → marker + gotowa komenda dla terminala. Zawsze za Twoją zgodą.
-
----
-
-## Struktura repozytorium
-
-```
-cykl-lifecycle/
-├── README.md
-├── CHANGELOG.md
-├── LICENSE
-├── CONTRIBUTING.md
-├── install.sh                   # instalator jednokomendowy (Claude i/lub Codex)
-├── build-plugin.sh              # buduje i WERYFIKUJE paczkę — uruchom po każdej zmianie w skills/
-├── cykl-lifecycle.plugin        # paczka dla Cowork — ZAWIERA WŁASNĄ KOPIĘ skills/
-├── packaging/
-│   └── plugin-README.md         # README widoczne po instalacji z paczki (inne niż to)
-├── .claude-plugin/
-│   └── plugin.json              # manifest pluginu Claude
-├── .codex-plugin/
-│   └── plugin.json              # manifest pluginu Codeksa
-├── marketplace.json             # osobisty marketplace Codeksa (instalacja jako plugin)
-├── skills/                      # 7 skilli (dual-compatible: Claude + Codex)
-│   ├── cykl-start/  · cykl-zamknij/  · cykl-migawka/  · cykl-roadmap/
-│   ├── cykl-lekcja/ · cykl-lekcja-globalna/
-│   └── cykl-kickoff/            # + assets/ (5 template'ów) + references/
-│       └── agents/openai.yaml   # każdy skill ma metadane Codeksa (Claude je ignoruje)
-└── docs/
-    ├── INSTALL-claude.md        # instalacja: Claude Code / Cowork / web
-    ├── INSTALL-codex.md         # instalacja: Codex (skille albo plugin) + bezpieczeństwo
-    ├── PRZEWODNIK-KOMEND.md     # przewodnik po komendach z przykładami
-    └── ARCHITEKTURA-DECYZJE.md  # DLACZEGO system wygląda tak — decyzje z precedensami
+```sh
+python3 -B -m unittest discover -s tests -v
+python3 -B skills/cykl-start/scripts/lifecycle.py check --package
+bash build-plugin.sh
 ```
 
-> ⚠️ **`cykl-lifecycle.plugin` to zip z własną kopią całego `skills/`.** Kto instaluje z tego pliku, dostaje treść z paczki, nie z repozytorium — więc **każda zmiana w `skills/` wymaga przebudowania paczki w tym samym commicie**: `./build-plugin.sh` (buduje i weryfikuje, że zawartość zgadza się z repo).
->
-> Wersja żyje w **pięciu** miejscach naraz: oba manifesty, marker `<!-- cykl-lifecycle vX.Y.Z -->` w siedmiu `SKILL.md`, badge w README i nagłówek przewodnika — plus manifest wewnątrz paczki. Przed wydaniem: `grep -r "vSTARA" skills .claude-plugin .codex-plugin` ma dać zero.
-
----
-
-## Jak to działa technicznie
-
-Skille to pliki `SKILL.md` zgodne z [otwartym standardem Agent Skills](https://agentskills.io). Agent ładuje na starcie tylko ich nazwę + opis (progressive disclosure), a pełną treść dopiero gdy komenda lub kontekst pasują do triggera. Każdy skill ma klauzulę „NIE używaj gdy…", która chroni przed odpaleniem w złym momencie.
-
-Architektura odpowiada wzorcom dla długo działających agentów: lista kroków ze statusami (edytuje się tylko status), jeden krok na sesję, protokół „wczytaj stan" na wejściu (`/start`), czysty zapis + commit na końcu (`/zamknij`). **Zero automatyzacji bez Twojej zgody** — każda zmiana pokazywana jest jako diff, a `git commit` wykonujesz sam.
-
-Od 2.6.0 dwie reguły projektowe wynikające z analizy realnych awarii tego systemu. Po pierwsze: **warunek musi być sprawdzalny w środowisku, w którym ma działać.** Bramka wyrażona komentarzem (`# nie commituj, jeśli…`) nie zatrzyma niczego, bo człowiek wkleja cały blok naraz — dlatego warunki egzekwuje składnia powłoki. Po drugie: **stan zapisany w dokumencie musi mieć punkt oparcia poza dokumentami.** Trzy pliki potrafią zgodnie powtarzać tę samą nieaktualną informację i przejść każdy test spójności wewnętrznej — dlatego `/start` wykonuje `STATE_PROBE` i porównuje pomiar z zapisem, zamiast porównywać zapisy między sobą.
-
-Wariant dual-compatible: ten sam `SKILL.md` działa w Claude i Codeksie. Dodatkowy `agents/openai.yaml` (metadane + polityka wywołania) czyta tylko Codex — Claude go ignoruje. Status walidacji: wszystkie 7 skilli przetestowane na żywo na Claude i na Codex (gpt-5.5) — patrz [CHANGELOG](CHANGELOG.md).
-
----
-
-## Wkład
-
-Issues i PR-y mile widziane — zwłaszcza raporty błędnych triggerów (false positive / negative), tłumaczenia na inne języki i doświadczenia z różnych środowisk. Szczegóły: [CONTRIBUTING.md](CONTRIBUTING.md).
-
-## Licencja
-
-[MIT](LICENSE) © 2026 Michał Witczak
+Build produces the plugin, combined skills ZIP and seven individual skill ZIPs.
+See [CHANGELOG](CHANGELOG.md) for breaking changes and [R2](docs/design/v3.0.md) for caps/contracts.

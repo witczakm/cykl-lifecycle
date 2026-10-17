@@ -1,3 +1,5 @@
+> Historical v2 guide. Version 3.0.0 is breaking: use the [current README and migration guide](../README.md). Do not run v2 cleanup/writers on schema 3.
+
 # Decyzje architektoniczne — cykl-lifecycle
 
 **Wersja:** 2.6.0 · **Ostatnia aktualizacja:** 2026-08-04

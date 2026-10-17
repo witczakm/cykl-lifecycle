@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Install as .git/hooks/pre-commit in each adopting repo; hooks are not merge protection.
+set -euo pipefail
+ROOT="$(git rev-parse --show-toplevel)"
+LIFECYCLE="${LIFECYCLE:-$ROOT/skills/cykl-start/scripts/lifecycle.py}"
+TMP="$(mktemp -d)"
+trap 'rm -rf "$TMP"' EXIT
+# checkout-index reads the entire INDEX, not a possibly different working tree.
+[ -z "$(git ls-files --unmerged)" ] || { echo 'Resolve staged conflicts first' >&2; exit 1; }
+git checkout-index --all --prefix="$TMP/"
+if [ -f "$TMP/PROJECT_CONFIG.md" ] || [ -f "$TMP/docs/NOW.md" ] \
+   || git cat-file -e HEAD:docs/NOW.md 2>/dev/null; then
+  python3 "$LIFECYCLE" check --root "$TMP"
+else
+  python3 "$LIFECYCLE" check --package --root "$TMP"
+fi
