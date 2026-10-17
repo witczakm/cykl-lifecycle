@@ -1483,7 +1483,7 @@ class LifecycleTests(unittest.TestCase):
         for path in paths:
             if 'reports' in path.parts or path.name.startswith('test_'):
                 continue
-            self.assertIsNone(pattern.search(path.read_text().replace('witczakm/cykl-lifecycle', '').replace('Michał — personal plugins', '')  # shipped marketplace display name, kept for installs), str(path))
+            self.assertIsNone(pattern.search(path.read_text().replace('witczakm/cykl-lifecycle', '').replace('Michał — personal plugins', '')), str(path))  # marketplace name kept: shipped since 2.4.0
 
     def test_version_stamped_consistently(self):
         version = self.lc.VERSION
