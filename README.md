@@ -1,10 +1,33 @@
 # cykl-lifecycle 3.1.0
+**English** · [Polski](README.pl.md)
 
-Project memory for AI coding agents across sessions. A session starts with `/start`,
-ends with `/close`, and the next session knows where the last one stopped, what is
-open and what the one next action is. Works with Claude Code, Claude Cowork and
-OpenAI Codex (Agent Skills format). One stdlib Python script is the only writer of
-lifecycle state; every read is size-capped so startup stays small.
+**Project memory for AI coding agents.** AI agents forget everything when a chat ends.
+cykl-lifecycle gives them a short, reliable memory that lives in your project folder:
+each session starts with `/start` ("where are we, what's next?") and ends with `/close`
+("save where we stopped"). The next session, in any chat, picks up from there.
+
+**Who it's for:** anyone who runs a project with Claude Code, Claude Cowork or OpenAI Codex
+across many sessions, from a solo side project to a lead agent coordinating several models.
+You don't need to read the code; the agent runs it for you.
+
+**Try it in a minute** (needs Python 3.9+):
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/witczakm/cykl-lifecycle/main/install.sh | bash -s -- claude
+```
+
+Restart the agent, open your project and type `/kickoff`. From then on: `/start` when you
+begin, `/close` when you stop.
+
+**How it stays trustworthy.** The project's *lifecycle state* (a few small files that say
+where the project stands, what is open and the one next action) is written by a single
+plain-Python script, never edited by hand or by the agent directly. Every read is
+size-capped, so starting a session stays fast and cheap. A save counts only when the
+script returns a receipt (a checkpoint ID and hash).
+
+Docs: [Command guide](docs/COMMAND-GUIDE.md) · [Install on Claude](docs/INSTALL-claude.md) ·
+[Install on Codex](docs/INSTALL-codex.md) · [Merge protection](docs/MERGE-PROTECTION.md) ·
+[Why it is built this way (v2)](docs/ARCHITECTURE-DECISIONS.md)
 
 ## Choose your edition
 
@@ -51,6 +74,7 @@ Use `codex` or `both` instead of `claude` for OpenAI Codex. Claude Cowork: drag
 `cykl-lifecycle.plugin` into a conversation. Restart the agent after installing.
 
 Then, in the project: `/kickoff` and answer "local" or "github" when asked where tasks live.
+Details: [Claude](docs/INSTALL-claude.md), [Codex](docs/INSTALL-codex.md).
 
 ## The session loop
 
@@ -76,6 +100,8 @@ duplicate skills.
 | cykl-lekcja | /lesson | Record a project lesson with evidence |
 | cykl-lekcja-globalna | /lesson-global | Propose a cross-project lesson |
 | cykl-prowadzacy | /lead | Multi-agent edition only: lead-thread protocol |
+
+Every command with examples: [command guide](docs/COMMAND-GUIDE.md).
 
 ## Editions in detail
 
@@ -118,6 +144,9 @@ Do not mix versions of the skills.
 
 ## Merge protection (GitHub editions)
 
+A pre-commit hook and a required CI check (`lifecycle-integrity`, a *merge-result gate*: it
+validates what the merged code would look like, against both parents, before GitHub lets the
+merge happen) stop a merge from silently dropping open work or decisions.
 See [docs/MERGE-PROTECTION.md](docs/MERGE-PROTECTION.md). Until a blocked canary PR has
 been demonstrated in your repository, report "merge protection unverified".
 
@@ -160,7 +189,7 @@ Duplicate or previously closed IDs are refused. Add a NOW reference with a subse
 checkpoint when needed. Agents never need a whole-index read or replacement for an append.
 
 NOW is capped at 4,096 UTF-8 bytes. All helper responses share a 16,384-byte cap; extra
-files use `context --file PATH`. Decisions are projected, never loaded whole by skills.
+files use `context --file PATH`. Decisions live in the *decision index* `docs/DECISIONS.md` (one line per decision or lesson); skills only ever see a capped projection of it, never the whole file.
 There is no token-count guarantee. Unwritten thoughts and arbitrary harness reads are
 outside this enforcement boundary.
 
@@ -186,6 +215,12 @@ bash build-plugin.sh
 Build produces the plugin, the combined skills ZIP and eight individual skill ZIPs.
 See [CHANGELOG](CHANGELOG.md) for changes, [R2](docs/design/v3.0.md) and
 [the 3.1 delta](docs/design/v3.1.md) for caps and contracts.
+
+## Versions
+
+- **Current: 3.1.0** — [release v3.1.0](https://github.com/witczakm/cykl-lifecycle/releases/tag/v3.1.0).
+- **Outdated:** 2.x and 3.0.x; history in [CHANGELOG.md](CHANGELOG.md).
+- **Outdated:** the separate English repository [witczakm/cycle-lifecycle](https://github.com/witczakm/cycle-lifecycle) (2.4.0) is superseded by this one.
 
 ## License
 

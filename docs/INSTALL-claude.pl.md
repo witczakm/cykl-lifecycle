@@ -1,110 +1,73 @@
-> Historical v2 guide. Version 3 is breaking: use the [current README and migration guide](../README.md). Do not run v2 cleanup/writers on schema 3.
-
 # Instalacja — Claude (Code / Cowork / web)
+[English](INSTALL-claude.md) · **Polski**
 
-Trzy środowiska Claude. Wybierz swoje.
-
-## Najprościej: gotowa paczka ZIP (bez gita)
-
-Pobierz **[`cykl-lifecycle-skills.zip`](https://github.com/witczakm/cykl-lifecycle/releases/latest/download/cykl-lifecycle-skills.zip)** z najnowszego wydania. Archiwum zawiera 7 folderów `cykl-*` **w korzeniu**, więc rozpakowujesz je wprost do katalogu skilli:
-
-```bash
-mkdir -p ~/.claude/skills
-unzip -o ~/Downloads/cykl-lifecycle-skills.zip -d ~/.claude/skills/
-ls ~/.claude/skills/
-# cykl-kickoff  cykl-lekcja  cykl-lekcja-globalna  cykl-migawka
-# cykl-roadmap  cykl-start   cykl-zamknij
-```
-
-`-o` nadpisuje istniejące pliki — ta sama komenda instaluje i aktualizuje. Zrestartuj sesję i wpisz `/kickoff`.
+cykl-lifecycle 3.1 to 7 podstawowych skilli plus opcjonalny `cykl-prowadzacy` (prowadzący
+wieloagentowy). Instaluj je razem: pozostałe skille wywołują `cykl-start/scripts/lifecycle.py`.
+Wymagany jest Python 3.9+.
 
 ## Claude Code (terminal) — zalecane
 
 ```bash
-# 1. Pobierz repo — URL skopiuj z zielonego przycisku "Code → HTTPS" na stronie repo
-git clone https://github.com/witczakm/cykl-lifecycle.git
-cd cykl-lifecycle
+# Edycje Lokalna i GitHub (7 skilli)
+curl -fsSL https://raw.githubusercontent.com/witczakm/cykl-lifecycle/main/install.sh | bash -s -- claude
 
-# 2. Wgraj skille globalnie
-mkdir -p ~/.claude/skills
-cp -r skills/cykl-* ~/.claude/skills/
-
-# 3. Sprawdź
-ls ~/.claude/skills/
-# cykl-kickoff  cykl-lekcja  cykl-lekcja-globalna  cykl-migawka
-# cykl-roadmap  cykl-start   cykl-zamknij
+# Edycja GitHub + wielu agentów (8 skilli)
+curl -fsSL https://raw.githubusercontent.com/witczakm/cykl-lifecycle/main/install.sh | bash -s -- claude --edition multi
 ```
 
-Otwórz nową sesję w katalogu projektu i wpisz `/kickoff`.
+Instalator podmienia wszystkie skille `cykl-*` w `~/.claude/skills/`, więc wersje się nie mieszają.
+Zrestartuj Claude Code, otwórz projekt i wpisz `/kickoff`.
+
+**Bez curl | bash** — pobierz [`cykl-lifecycle-skills.zip`](https://github.com/witczakm/cykl-lifecycle/releases/latest/download/cykl-lifecycle-skills.zip)
+(wszystkie 8 folderów skilli w korzeniu archiwum):
+
+```bash
+mkdir -p ~/.claude/skills
+rm -rf ~/.claude/skills/cykl-*
+unzip ~/Downloads/cykl-lifecycle-skills.zip -d ~/.claude/skills/
+rm -rf ~/.claude/skills/cykl-prowadzacy   # tylko jeśli chcesz edycję z 7 skillami
+```
+
+**Z klonu repozytorium:**
+
+```bash
+git clone https://github.com/witczakm/cykl-lifecycle.git
+CYKL_SKILLS_DIR="$PWD/cykl-lifecycle/skills" bash cykl-lifecycle/install.sh claude
+```
 
 ## Claude Cowork (desktop)
 
-**Settings → Capabilities → Skills → Add skill.** Wgraj każdy z 7 plików `dist/cykl-*.zip` osobno (z Release na GitHubie) — jeden zip = jeden skill z folderem skilla w korzeniu; zbiorczy `cykl-lifecycle-skills.zip` aplikacja odrzuca. Zrestartuj Cowork, otwórz rozmowę, wpisz `/kickoff`.
+Przeciągnij [`cykl-lifecycle.plugin`](https://github.com/witczakm/cykl-lifecycle/releases/latest/download/cykl-lifecycle.plugin)
+do rozmowy. Albo: **Settings → Capabilities → Skills → Add skill** i wgraj osobno każdy plik
+`cykl-*.zip` z [najnowszego wydania](https://github.com/witczakm/cykl-lifecycle/releases/latest)
+(jeden zip = jeden skill; zbiorczego ZIP-a ze skillami aplikacja nie przyjmie). Zrestartuj Cowork i wpisz `/kickoff`.
 
-> `/lekcja-g` (zapis globalny) w Cowork wymaga Claude Code do faktycznego zapisu do `~/.claude/` — Cowork wstawia „kandydata" i daje gotowe polecenie do wklejenia w terminalu. Pozostałe 6 komend działa w pełni.
+## Claude.ai (web / telefon)
 
-## Claude.ai (web / mobile)
+**Settings → Capabilities → Skills → Add skill**, po jednym skillu. Ograniczenie: aplikacja webowa
+nie uruchamia skryptu i nie zapisuje plików projektu, więc pomoże tylko w planowaniu. Do zapisu
+stanu potrzebny jest Claude Code albo Cowork.
 
-**Settings → Capabilities → Skills → Add skill** (każdy folder osobno). Ograniczenie: web nie ma dostępu do plików — pomoże w planowaniu, ale zapis do plików projektu wymaga Claude Code lub Cowork.
+## Aktualizacja
 
-## Aktualizacja do nowszej wersji
-
-**Najpierw sprawdź, co masz zainstalowane:**
+Sprawdź, co masz zainstalowane:
 
 ```bash
 grep -h "cykl-lifecycle v" ~/.claude/skills/cykl-*/SKILL.md | sort -u
-# oczekiwane po aktualizacji: <!-- cykl-lifecycle v2.8.2 -->
+# po aktualizacji powinno być: <!-- cykl-lifecycle v3.1.0 -->
 ```
 
-Marker siedzi w każdym `SKILL.md` tuż pod frontmatterem. Jeśli komenda zwróci **więcej niż jedną linię**, masz wymieszane wersje — usuń wszystko i wgraj od nowa.
+Więcej niż jedna linia oznacza wymieszane wersje: uruchom instalator ponownie. Potem
+**zrestartuj agenta** — skille ładują się na starcie sesji.
 
-### Claude Code — jedną komendą
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/witczakm/cykl-lifecycle/main/install.sh | bash -s -- claude
-```
-
-Pobiera skille wprost z GitHuba i nadpisuje istniejące. Nie musisz mieć klonu repo.
-
-### Claude Code — z paczki ZIP
-
-```bash
-unzip -o ~/Downloads/cykl-lifecycle-skills.zip -d ~/.claude/skills/
-```
-
-`-o` nadpisuje w miejscu, więc stare pliki znikają razem z podmienianymi. Jeśli poprzednia wersja miała plik, którego nowa już nie ma, usuń katalogi przed rozpakowaniem: `rm -rf ~/.claude/skills/cykl-*`.
-
-### Claude Code — ręcznie
-
-```bash
-cd cykl-lifecycle && git pull      # jeśli masz klon
-rm -rf ~/.claude/skills/cykl-*     # usuń stare — inaczej zostaną pliki, których nowa wersja już nie ma
-cp -r skills/cykl-* ~/.claude/skills/
-```
-
-### Cowork (desktop)
-
-Pobierz świeży **[`cykl-lifecycle.plugin`](https://github.com/witczakm/cykl-lifecycle/raw/main/cykl-lifecycle.plugin)** i przeciągnij do rozmowy — instalacja nadpisze poprzednią wersję wszystkich 7 skilli naraz.
-
-> ⚠️ Paczka `.plugin` zawiera **własną kopię** skilli. Aktualizacja repo nie aktualizuje paczki i odwrotnie — jeśli używasz obu ścieżek, odśwież obie.
-
-### Claude.ai (web / mobile)
-
-**Settings → Capabilities → Skills** — usuń 7 starych wpisów `cykl-*` i dodaj foldery na nowo. Web nie ma mechanizmu podmiany w miejscu.
-
-### Po aktualizacji
-
-**Zrestartuj agenta** — skille ładują się na starcie sesji, więc bez restartu nadal działa stara wersja. Potem zweryfikuj markerem (komenda na górze tej sekcji).
-
-Masz starą wersję `nsos-*`? Usuń, żeby uniknąć konfliktów:
-```bash
-rm -rf ~/.claude/skills/nsos-*
-```
-
-> **Czy aktualizacja zepsuje istniejące projekty?** Nie. 2.6.0 nie łamie kompatybilności: nowe pole `STATE_PROBE` w `PROJECT_CONFIG` jest opcjonalne — jego brak daje zachowanie sprzed zmiany, a `/start` pominie pomiar zewnętrzny. Dokumenty stanu założone starszą wersją czytają się bez migracji. Jeśli chcesz włączyć pomiar w istniejącym projekcie, dopisz do `PROJECT_CONFIG.md` jedną linię, np. `STATE_PROBE=git rev-parse --short HEAD; git rev-list --left-right --count origin/main...HEAD`.
+- Z 3.0.x: po prostu zainstaluj 3.1.0; migracja nie jest potrzebna.
+- Z v2: wersja 3 nie jest zgodna wstecz. Zanim użyjesz jej w istniejącym projekcie, przejdź
+  [MIGRATION-v2.md](MIGRATION-v2.md) (po angielsku).
+- Plik `.plugin` ma własną kopię skilli: jeśli używasz i pluginu, i instalacji folderów, zaktualizuj oba.
 
 ## Rozwiązywanie problemów
 
-- **Skill się nie odpala** — zrestartuj sesję (skille ładują się na starcie). Sprawdź: `ls ~/.claude/skills/cykl-start/` (ma być `SKILL.md`).
-- **Odpala się w złym momencie** — powiedz wprost: „nie używaj tu /start, piszemy kod". Każdy skill ma sekcję „NIE używaj gdy…".
-- **W Cowork nie widać skilli** — dodaj każdy z 7 folderów osobno (nie cały katalog `skills/`), zrestartuj Cowork.
+- **Skill się nie uruchamia:** zrestartuj sesję; sprawdź, czy istnieje `~/.claude/skills/cykl-start/SKILL.md`.
+- **`/start` zatrzymuje się z błędem:** to celowe; przeczytaj komunikat. Gdy stan nie przechodzi
+  sprawdzenia, agent nie może jechać dalej na pamięci z rozmowy.
+- **Cowork nie pokazuje skilli:** dodaj każdy zip skilla osobno (nie cały folder `skills/`) i zrestartuj.

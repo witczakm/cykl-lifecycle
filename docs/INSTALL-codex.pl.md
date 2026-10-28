@@ -1,91 +1,44 @@
-> Historical v2 guide. Version 3 is breaking: use the [current README and migration guide](../README.md). Do not run v2 cleanup/writers on schema 3.
-
 # Instalacja — OpenAI Codex
+[English](INSTALL-codex.md) · **Polski**
 
-Wszystkie 7 skilli zweryfikowane na żywo na Codex v0.140.0 / gpt-5.5 (2026-06-17).
+cykl-lifecycle 3.1 to 7 podstawowych skilli plus opcjonalny `cykl-prowadzacy` (prowadzący
+wieloagentowy). Instaluj je razem. Wymagany jest Python 3.9+.
 
 ## 0. Masz Codeksa?
 
 ```bash
-npm install -g @openai/codex   # pakiet @openai/codex (nie "codex")
+npm install -g @openai/codex
 codex --version
-codex                          # pierwsze uruchomienie: zaloguj się kontem ChatGPT
 ```
 
-## Wariant A — same skille (najprostszy, zalecany na start)
-
-**Z gotowej paczki ZIP** (bez klonowania repo) — pobierz [`cykl-lifecycle-skills.zip`](https://github.com/witczakm/cykl-lifecycle/releases/latest/download/cykl-lifecycle-skills.zip) z najnowszego wydania. Archiwum ma 7 folderów `cykl-*` w korzeniu, więc rozpakowujesz je wprost:
+## Wariant A — same skille (zalecany)
 
 ```bash
-mkdir -p ~/.agents/skills
-unzip -o ~/Downloads/cykl-lifecycle-skills.zip -d ~/.agents/skills/
+# Edycje Lokalna i GitHub (7 skilli)
+curl -fsSL https://raw.githubusercontent.com/witczakm/cykl-lifecycle/main/install.sh | bash -s -- codex
+
+# Edycja GitHub + wielu agentów (8 skilli)
+curl -fsSL https://raw.githubusercontent.com/witczakm/cykl-lifecycle/main/install.sh | bash -s -- codex --edition multi
 ```
 
-`-o` nadpisuje istniejące pliki — ta sama komenda instaluje i aktualizuje.
+Skille trafiają do `~/.agents/skills/`. Zamiast `codex` użyj `both`, żeby zainstalować naraz dla
+Claude i Codeksa. Offline: usuń stare foldery `cykl-*` i rozpakuj
+[`cykl-lifecycle-skills.zip`](https://github.com/witczakm/cykl-lifecycle/releases/latest/download/cykl-lifecycle-skills.zip)
+do `~/.agents/skills/`.
 
-**Albo z klonu repo:**
-
-```bash
-mkdir -p ~/.agents/skills
-cp -r skills/cykl-* ~/.agents/skills/
-```
-
-Zrestartuj Codex, wpisz `/skills` (ma być widocznych 7), potem `$cykl-kickoff`.
+Zrestartuj Codeksa, wpisz `/skills`, żeby sprawdzić, czy są na liście, potem `$cykl-kickoff`.
 
 ## Wariant B — jako plugin Codeksa
 
-Repo zawiera manifest (`.codex-plugin/plugin.json`) i przykładowy marketplace (`marketplace.json`).
+Repozytorium zawiera manifest pluginu (`.codex-plugin/plugin.json`) i przykładowy `marketplace.json`:
 
 ```bash
 mkdir -p ~/.agents/plugins/cykl-lifecycle
-cp -r .codex-plugin skills  ~/.agents/plugins/cykl-lifecycle/
-cp marketplace.json         ~/.agents/plugins/marketplace.json
-```
-
-Potem w Codeksie podłącz plugin: wpisz `$plugin-creator` i poproś o podłączenie pluginu z `~/.agents/plugins/cykl-lifecycle` do marketplace, albo otwórz katalog pluginów i zainstaluj z marketplace „Michał — personal plugins". Zrestartuj Codex.
-
-## Aktualizacja do nowszej wersji
-
-**Najpierw sprawdź, co masz zainstalowane:**
-
-```bash
-grep -h "cykl-lifecycle v" ~/.agents/skills/cykl-*/SKILL.md | sort -u
-# oczekiwane po aktualizacji: <!-- cykl-lifecycle v2.8.2 -->
-```
-
-Marker siedzi w każdym `SKILL.md` tuż pod frontmatterem. Jeśli komenda zwróci **więcej niż jedną linię**, masz wymieszane wersje — usuń wszystko i wgraj od nowa.
-
-**Aktualizacja z paczki ZIP** — pobierz [`cykl-lifecycle-skills.zip`](https://github.com/witczakm/cykl-lifecycle/releases/latest/download/cykl-lifecycle-skills.zip) i rozpakuj z `-o`:
-
-```bash
-rm -rf ~/.agents/skills/cykl-*     # usuń stare, żeby nie zostały pliki spoza nowej wersji
-unzip -o ~/Downloads/cykl-lifecycle-skills.zip -d ~/.agents/skills/
-```
-
-**Aktualizacja jedną komendą** (pobiera skille wprost z GitHuba, nadpisuje istniejące):
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/witczakm/cykl-lifecycle/main/install.sh | bash -s -- codex
-```
-
-**Albo ręcznie**, z pobranego repo:
-
-```bash
-cd cykl-lifecycle && git pull          # jeśli masz klon
-rm -rf ~/.agents/skills/cykl-*         # usuń stare — inaczej zostaną pliki, których nowa wersja już nie ma
-cp -r skills/cykl-* ~/.agents/skills/
-```
-
-**Jeśli instalowałeś wariantem B (jako plugin)** — podmień też zawartość katalogu pluginu:
-
-```bash
-rm -rf ~/.agents/plugins/cykl-lifecycle/skills
 cp -r .codex-plugin skills ~/.agents/plugins/cykl-lifecycle/
+cp marketplace.json ~/.agents/plugins/marketplace.json
 ```
 
-**Na koniec zrestartuj Codeksa** i sprawdź `/skills` — ma być widocznych 7. Skille ładują się na starcie sesji, więc bez restartu nadal działa stara wersja.
-
-> **Czy aktualizacja zepsuje istniejące projekty?** Nie. 2.6.0 nie łamie kompatybilności: nowe pole `STATE_PROBE` w `PROJECT_CONFIG` jest opcjonalne — jego brak daje zachowanie sprzed zmiany, a `/start` po prostu pominie pomiar zewnętrzny. Dokumenty stanu założone starszą wersją czytają się bez migracji.
+Potem zainstaluj plugin z tego marketplace w Codeksie i zrestartuj go.
 
 ## Jak wołać skille
 
@@ -93,25 +46,32 @@ cp -r .codex-plugin skills ~/.agents/plugins/cykl-lifecycle/
 |---|---|
 | jawnie | `$cykl-start`, `$cykl-kickoff`, … |
 | z menu | `/skills` → wybierz |
-| zdaniem | „gdzie jesteśmy w projekcie?" |
+| zdaniem | „gdzie jesteśmy w tym projekcie?” |
 
-`/start` jako slash to **Claude-izm** — w Codeksie użyj `$cykl-start`. `cykl-kickoff` odpala się **tylko** jawnie (`allow_implicit_invocation: false`), bo scaffolduje strukturę.
+Komendy w stylu `/start` to konwencja Claude; w Codeksie użyj `$cykl-start`.
 
-## ⚠ Bezpieczeństwo — tryb zatwierdzania
+## Aktualizacja
 
-Codex to **agent**: wykonuje realne komendy i potrafi sięgnąć **poza** katalog projektu.
-
-- Ustaw rozsądny tryb zatwierdzania: `/approvals` w sesji (lub `--sandbox` / `approval_policy` w `~/.codex/config.toml`).
-- **Czytaj, co zatwierdzasz** — odrzucaj akcje poza bieżącym projektem albo komendy systemowe (`pg_dump`, `npx`, `rm`, `docker`…), których świadomie nie zleciłeś.
-- Skille cykla zapisują tylko dokumenty stanu w katalogu projektu i **nigdy nie wykonują git mutującego** (`add`, `commit`, `push`, `stash`) — dostajesz gotowy blok do wklejenia. Od 2.5.0 wykonują komendy **pomiarowe z białej listy** (`rev-parse`, `rev-list`, `log`, `show`, `diff --stat`) — wyłącznie odczyt.
-
-**Higiena (opcjonalna).** Przy wielu zainstalowanych skillach Codex skraca opisy (budżet ~2%) i chętnie odpala inne skille. Na czysto-cyklowe sesje możesz wyłączyć nieużywane w `~/.codex/config.toml`:
-```toml
-[[skills.config]]
-path = "/ścieżka/do/SKILL.md"
-enabled = false
+```bash
+grep -h "cykl-lifecycle v" ~/.agents/skills/cykl-*/SKILL.md | sort -u
+# po aktualizacji powinno być: <!-- cykl-lifecycle v3.1.0 -->
 ```
 
-## /lekcja-g na Codeksie
+Więcej niż jedna linia oznacza wymieszane wersje: uruchom instalator ponownie. Jeśli instalowałeś
+wariantem B, podmień też `~/.agents/plugins/cykl-lifecycle/skills`. Na koniec zrestartuj Codeksa.
+Z v2 najpierw przejdź [MIGRATION-v2.md](MIGRATION-v2.md) (po angielsku).
 
-Lekcja globalna ląduje w **`~/.codex/AGENTS.md`** (sekcja „cykl-lifecycle — global lessons", numeracja GL-NNN) — to plik globalnych instrukcji czytany na starcie każdej sesji w każdym projekcie. Zawsze za Twoją zgodą; sandbox może poprosić o zatwierdzenie zapisu poza katalogiem projektu (to oczekiwane).
+## Bezpieczeństwo — tryb zatwierdzania
+
+Codex to agent: wykonuje prawdziwe komendy i może sięgnąć poza folder projektu.
+
+- Ustaw rozsądny tryb zatwierdzania (`/approvals` w sesji albo `approval_policy` / `--sandbox` w `~/.codex/config.toml`).
+- Czytaj, co zatwierdzasz; odrzucaj akcje spoza bieżącego projektu, o które nie prosiłeś.
+- Skille cyklu zapisują tylko pliki stanu w projekcie, przez `lifecycle.py`. Commit albo publikację
+  robią tylko na Twoją osobną prośbę.
+
+## /lekcja-g w Codeksie
+
+Lekcja globalna jest zapisywana w projekcie jako **proponowana**. Do instrukcji globalnych
+(np. `~/.codex/AGENTS.md`) trafia wyłącznie za Twoją wyraźną zgodą; skill daje Ci gotowy tekst
+i nigdy nie wstawia go sam.

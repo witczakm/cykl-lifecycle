@@ -1,308 +1,181 @@
-> Historical v2 guide. Version 3 is breaking: use the [current README and migration guide](../README.md). Do not run v2 cleanup/writers on schema 3.
+# Przewodnik po komendach — cykl-lifecycle 3.1
+[English](COMMAND-GUIDE.md) · **Polski**
 
-# Przewodnik komend — zestaw cykl-lifecycle
-
-**Wersja:** 2.8.2  
-**Dla kogo:** każda osoba używająca zestawu skilli do prowadzenia projektów wielosesyjnych
-
----
+**Dla kogo:** dla każdego, kto prowadzi projekt z cykl-lifecycle przez wiele sesji z AI.
+Ty wpisujesz komendy; skrypt, który za nimi stoi, uruchamia agent.
 
 ## Idea w jednym akapicie
 
-Projekt trwający kilkanaście-kilkadziesiąt sesji ma jeden główny problem: każda nowa sesja
-zaczyna się bez pamięci o poprzednich. Ten zestaw rozwiązuje to przez 7 komend, które razem
-tworzą pętlę: **wejdź → pracuj → zapisz stan → wyjdź → wejdź następnym razem**. Model zawsze
-wie, na którym etapie projektu jesteśmy (np. "Etap 2/5") i w którym kroku tego etapu
-(np. "krok 3/6"). Nie trzeba niczego "tłumaczyć od początku" przy każdej sesji.
+Projekt trwający wiele sesji ma jeden główny problem: każda nowa rozmowa zaczyna się bez pamięci
+o poprzednich. cykl-lifecycle rozwiązuje to pętlą: **start → praca → zapis → zamknięcie → start
+następnym razem**. To, co agent musi pamiętać, mieszka w kilku małych plikach w Twoim projekcie
+— to *stan projektu*:
 
----
+| Plik | Co zawiera |
+|---|---|
+| `docs/NOW.md` | gdzie jest projekt, otwarte prace i jeden następny krok (maks. 4 KB) |
+| `docs/DECISIONS.md` | *indeks decyzji*: jedna linia na decyzję albo lekcję, ze stałym identyfikatorem |
+| `PROJECT_CONFIG.md` | kilka ustawień, np. `TASKS=local` albo `TASKS=github` |
+| `docs/ROADMAP.md`, `docs/issues/` | zadania — tylko w edycji Lokalnej |
 
-## Pętla (jak to wygląda w praktyce)
+Te pliki zapisuje wyłącznie skrypt `cykl-start/scripts/lifecycle.py`. Każdy zapis zwraca
+**kartę punktu kontrolnego** (identyfikator i hash). Nie ma karty = nic nie zapisano, niezależnie
+od tego, co mówi rozmowa.
+
+## Pętla
 
 ```
 Pierwsza sesja:
-  /kickoff  →  wywiad + struktura + pierwszy /start
+  /kickoff  ->  kilka pytań, pierwszy zapis, potem /start
 
 Każda kolejna sesja:
-  /start  →  pracuj  →  (opcjonalnie /migawka lub /lekcja w trakcie)  →  /zamknij
+  /start  ->  praca  ->  (opcjonalnie: /migawka, /lekcja po drodze)  ->  /zamknij
 
-Gdy chcesz sprawdzić postęp:
-  /roadmap
-
-Gdy pojawi się wniosek z pracy:
-  /lekcja  (dla tego projektu)
-  /lekcja-g  (dla wszystkich projektów)
+Sprawdzenie postępu:          /roadmap
+Zapamiętanie wniosku:         /lekcja (ten projekt) albo /lekcja-g (wszystkie projekty)
+Edycja wieloagentowa:         /prowadz
 ```
+
+Angielskie nazwy działają tak samo: `/snapshot` = `/migawka`, `/close` = `/zamknij`,
+`/lesson` = `/lekcja`, `/lesson-global` = `/lekcja-g`, `/lead` = `/prowadz`. W Codeksie skille
+wołasz jako `$cykl-start`, `$cykl-kickoff` itd.
+
+## Identyfikatory, które zobaczysz
+
+| Przedrostek | Znaczenie |
+|---|---|
+| `O-…` | zobowiązanie: coś, co wciąż jest do zrobienia (obietnica, oczekująca zgoda) |
+| `A-…` | próba: praca w toku |
+| `D-…` | decyzja |
+| `L-…` | lekcja |
+| `T-…` | zadanie (edycja Lokalna) |
+
+Otwarte identyfikatory nigdy nie znikają po cichu. Zamknięcie wymaga identyfikatora i powodu.
 
 ---
 
 ## /kickoff — założenie projektu
 
-**Kiedy używać:** raz, na samym początku nowego projektu, który będzie trwał wiele sesji.
+**Kiedy:** raz, na samym początku projektu.
 
 **Co robi:**
-1. Pyta o nazwę, cel i etapy projektu (zwięźle — maks 5-7 pytań)
-2. Tworzy strukturę katalogów i pliki dokumentów
-3. Wypełnia ROADMAP etapami i rozbija pierwszy etap na kroki
-4. Odpala pierwszy `/start`
+1. Sprawdza, czy projekt ma już pliki stanu. Jeśli ma pliki z v2, zatrzymuje się i kieruje do
+   migracji ([MIGRATION-v2.md](MIGRATION-v2.md), po angielsku); nigdy ich nie nadpisuje.
+2. Pyta o cel, repozytorium, gałąź i pierwszy następny krok.
+3. Pyta, gdzie mają być zadania: **github** (domyślnie) albo **local** (bez GitHuba).
+4. Zapisuje pierwszy stan (`checkpoint --expected absent`) i pokazuje kartę punktu kontrolnego.
+5. Instaluje hook pre-commit; w projektach na GitHubie także kontrolę `lifecycle-integrity`
+   (zobacz [Ochrona scalania](MERGE-PROTECTION.pl.md)).
 
-**Przykładowe użycie:**
-```
-/kickoff
-```
-Model zapyta: "Jak ma się nazywać projekt? Jakie są główne etapy (3-7 haseł)?"
-
-**Ważne:**
-- Jeśli projekt już istnieje — powiedz "adopt", żeby dołożyć brakujące elementy bez nadpisywania
-- Profil struktury: `lite` (mały projekt/PoC), `standard` (typowy), `regulated` (produkcja/audyt)
-
----
+Nie zakłada zgłoszeń, kamieni milowych ani wydań na GitHubie.
 
 ## /start — wejście w sesję
 
-**Kiedy używać:** na początku KAŻDEJ sesji. Najlepiej jako pierwsza komenda po otwarciu czatu.
+**Kiedy:** na początku każdej sesji, jako pierwsza komenda.
+
+**Co robi:** uruchamia `lifecycle.py context`, który sprawdza stan i zwraca krótkie podsumowanie
+z limitem rozmiaru. Agent raportuje:
+- bieżącą pozycję i jeden następny krok,
+- otwarte identyfikatory (zobowiązania, próby),
+- czy coś jest nieaktualne albo czy pracujesz offline.
+
+Jeśli sprawdzenie się nie powiedzie, sesja na tym się zatrzymuje: agent nie wraca do starej
+pamięci rozmowy ani do ręcznego czytania plików. Przykład:
+
+```
+Pozycja: etap API, endpoint logowania w toku (A-login).
+Następny krok: dokończyć /auth/login i uruchomić jego testy.
+Otwarte: O-review-auth (czeka na recenzję). Offline: nie.
+```
+
+## /migawka (/snapshot, /handoff) — zapis w trakcie sesji
+
+**Kiedy:** po ważnej decyzji albo domkniętym kroku, gdy nie chcesz czekać do końca sesji.
+
+**Co robi:** zapisuje nowy punkt kontrolny z pozycją, następnym krokiem, otwartą pracą i ryzykami,
+podając hash bieżącego stanu (dzięki temu dwa zapisy nie nadpiszą się nawzajem). Zwraca kartę
+punktu kontrolnego. Nigdy nie robi commita w gicie.
+
+## /zamknij (/close) — koniec sesji
+
+**Kiedy:** na końcu każdej sesji, w której była realna praca, i zanim długa rozmowa zostanie
+skompaktowana.
 
 **Co robi:**
-0. **Porządkuje dokumenty stanu skryptem** `scripts/porzadek.py --wykonaj` (od 2.8.0): historia → `docs/archive/`, jeden blok bieżący, 5 wierszy changelogu, lekcje zabłąkane za changelog wracają na miejsce; tabela PASS/FAIL trafia do referatu
-1. Czyta PROJECT_CONFIG, HANDOFF, ROADMAP, LESSONS_CANON
-2. **Mierzy stan poza dokumentami** — wykonuje `STATE_PROBE` z PROJECT_CONFIG i porównuje z zapisaną wartością
-3. Sprawdza, czy dokumenty są spójne między sobą (drift-check)
-4. Referuje: **Pozycja** (Etap X/N · krok Y/M), co ostatnio zamknięte, następny ruch (JEDEN krok)
-5. Zgłasza wykryte niespójności + wiszące lekcje globalne do zapisu
+1. Zbiera sprawdzone wyniki, to, co zostaje otwarte, zgody, nieudane podejścia i jeden następny krok.
+2. Zapisuje punkt kontrolny, potem uruchamia `check`.
+3. Pokazuje kartę punktu kontrolnego. Dopiero ona pozwala powiedzieć „sesja zapisana”.
 
-> **Dlaczego krok 2 jest przed krokiem 3.** Trzy dokumenty potrafią zgodnie powtarzać tę samą nieaktualną informację i przejść drift-check bez zarzutu — spójność wewnętrzna to nie prawdziwość. Sonda daje jedyny punkt oparcia, który nie pochodzi z dokumentów. Jeśli nie odpowie po trzech próbach, `/start` wpisuje `[DO SPRAWDZENIA]` i **nie blokuje** wejścia w sesję.
-
-**Przykładowe użycie:**
-```
-/start
-```
-Oczekiwany output:
-```
-Pozycja: Etap 2/5 "Implementacja API" · krok 3/7 "Endpoint autoryzacji"
-Ostatnio zamknięte: endpoint rejestracji (krok 2) — testy przeszły.
-Następny ruch: zaimplementować endpoint /auth/login (krok 3).
-Drift: brak. Wiszące lekcje globalne: brak.
-Porządek: HANDOFF 418 kB → 6 kB (historia w docs/archive/HANDOFF-2026-Q3.md); 1 FAIL: ROADMAP 40,7 kB (sekcja „Pozycja") → do /zamknij.
-```
-
-> **Dlaczego krok 0 istnieje.** Próg 40 kB i „nadpisuj, nie dopisuj" stały w skillu od 2.7.0 — a na żywym projekcie HANDOFF urósł do 418 kB, CONFIG miał 23 nagłówki wersji, a drift zgłaszany przez cztery kolejne sesje nie został naprawiony przez żadną. Reguła bez egzekucji maszynowej gnije; skrypt nie. Skrypt niczego nie kasuje i jest idempotentny — drugi przebieg nic nie przenosi.
-
-**Nie odpala się gdy:** wpisujesz "zacznij pisać funkcję", "uruchom npm start", "start serwera"
-
----
-
-## /zamknij — koniec sesji
-
-**Kiedy używać:** na końcu każdej sesji, przed zamknięciem czatu. Zawsze po realnej pracy.
-
-**Co robi:**
-1. Zbiera co się wydarzyło w sesji
-2. Aktualizuje HANDOFF (nadpisuje snapshot), ROADMAP (statusy kroków, Pozycja), PROJECT_CONFIG
-3. Wyciąga wnioski (opcjonalnie /lekcja lub /lekcja-g)
-4. Uruchamia `porzadek.py --wykonaj` — FAIL po porządku (proza w jednej sekcji) naprawiasz ręcznie, zanim pójdziesz dalej
-5. Pokazuje diff + gotowy blok komend git; blok zaczyna się od bramki `porzadek.py .` (kod wyjścia 1 = brak commita)
-
-**Przykładowe użycie:**
-```
-/zamknij
-```
-Oczekiwany output:
-```
-Sesja: zaimplementowano endpoint /auth/login (krok 3) — testy przeszły.
-Nowa Pozycja: Etap 2/5 · krok 4/7 "Middleware JWT"
-Zaktualizowane: docs/HANDOFF.md v1.4.0, docs/ROADMAP.md v1.3.0
-Commit:
-  set -euo pipefail
-  python3 ~/.claude/skills/cykl-start/scripts/porzadek.py . \
-    && grep -n "Ostatnia aktualizacja" docs/HANDOFF.md docs/ROADMAP.md PROJECT_CONFIG.md \
-    | grep -q "$(date +%Y-%m-%d)" \
-    && git add docs/HANDOFF.md docs/ROADMAP.md PROJECT_CONFIG.md docs/LESSONS_CANON.md docs/archive/ \
-    && git commit -m "sesja: endpoint login, krok 3/7 DONE"
-```
-
-> **Dlaczego blok wygląda tak, a nie prościej.** Warunek „commituj tylko, jeśli daty w plikach są dzisiejsze" musi być **składnią**, nie komentarzem. Wcześniejsze wersje miały `# jeśli data nie jest dzisiejsza — nie commituj` jako adnotację — a człowiek wkleja cały blok naraz, więc `git commit` wykonywał się niezależnie od wyniku sprawdzenia. `set -o pipefail` jest tu obowiązkowe: bez niego `cmd | grep` zwraca kod wyjścia ostatniego elementu potoku i bramka przepuszcza błąd.
-
-**Nie używaj gdy:** sesja była tylko rozmową bez decyzji/zmian — wtedy tylko podsumuj słownie.
-
----
-
-## /migawka — snapshot w środku sesji
-
-**Kiedy używać:** po ważnej decyzji lub domkniętym kroku roadmapy, gdy nie chcesz czekać do końca sesji.
-
-**Co robi:**
-1. Nadpisuje sekcję Snapshot w HANDOFF
-2. Jeśli krok się domknął — flipuje jego status i przesuwa Pozycję w ROADMAP
-3. Aktualizuje PROJECT_CONFIG jeśli zmienił się live-state
-
-**Przykładowe użycie:**
-```
-/migawka
-```
-lub przy długiej sesji po konkretnej decyzji:
-```
-Zdecydowałem: używamy Redis zamiast Memcached. /migawka
-```
-
-**Różnica /migawka vs /zamknij:**
-| | /migawka | /zamknij |
-|---|---|---|
-| Kiedy | W trakcie sesji | Na koniec sesji |
-| Lekcje | Nie | Tak |
-| Commit | Nie (zbiorczo potem) | Tak |
-| Zakres | HANDOFF + CONFIG + krok w ROADMAP | Wszystko |
-
-**Nie odpala się przy:** snapshotach testów (Jest/Vitest), VM snapshots, backupach baz danych
-
----
+Commit albo publikację robi tylko wtedy, gdy osobno o to poprosisz.
 
 ## /roadmap — przegląd postępu
 
-**Kiedy używać:** gdy chcesz zobaczyć "z lotu ptaka" — gdzie jesteśmy w całym projekcie i co zostało.
+**Kiedy:** chcesz zobaczyć zadania i wydania „z lotu ptaka”.
 
-**Co robi:**
-1. Pokazuje Pozycję (Etap X/N · krok Y/M)
-2. Statusy kroków bieżącego etapu (DONE/IN_PROGRESS/TODO)
-3. Sekwencję pozostałych etapów
+**Co robi:** pokazuje bieżący kamień milowy, identyfikatory zadań, następny krok i to, jak świeży
+jest ten widok.
+- Edycja Lokalna: linie w `docs/ROADMAP.md` (`- T-1 open Tytuł`) są listą zadań.
+- Edycja GitHub: prawdą są zgłoszenia i kamienie milowe GitHuba; lokalny ROADMAP to tylko podgląd.
 
-**Przykładowe użycie:**
-```
-/roadmap
-```
-Oczekiwany output:
-```
-Pozycja: Etap 2/5 "Implementacja API" · krok 3/7 "Endpoint autoryzacji"
+`/roadmap update …` zmienia go wyłącznie na Twoją prośbę i tylko przy sprawdzonym uprawnieniu;
+offline zmiana jest zapisywana jako oczekująca pozycja `O-…`.
 
-Etap 2 — kroki:
-[DONE] 2.1 Konfiguracja routera
-[DONE] 2.2 Endpoint rejestracji  
-[IN_PROGRESS] 2.3 Endpoint autoryzacji
-[TODO] 2.4 Middleware JWT
-[TODO] 2.5 Refresh token
-[TODO] 2.6 Wylogowanie
-[TODO] 2.7 Testy integracyjne
+## /lekcja (/lesson) — zapis lekcji projektu
 
-Dalsze etapy: 3-Frontend (TODO) · 4-Testy E2E (TODO) · 5-Deploy (TODO)
-```
+**Kiedy:** coś poszło źle (albo dobrze) i nie chcesz tego powtarzać w tym projekcie.
 
-**Aktualizacja roadmapy:**
-```
-/roadmap update zmieniamy kolejność: 2.5 (refresh token) przed 2.4 (middleware)
-```
+**Co robi:** dopisuje jeden wiersz do indeksu decyzji: regułę, precedens, który jej nauczył,
+i test operacyjny. Przykład:
 
-**Nie używaj dla:** roadmapy produktu klienta, strategii firmy zewnętrznej
-
----
-
-## /lekcja — zapis wniosku projektowego
-
-**Kiedy używać:** gdy pojawi się nauka specyficzna dla tego projektu — "żeby nie wrócić do tego błędu".
-
-**Co robi:**
-1. Pyta: czy ta lekcja dotyczy TYLKO tego projektu czy wszystkich? (routing zasięgu)
-2. Formułuje w formacie: **Reguła** + **Dlaczego** + **Test operacyjny**
-3. Dopisuje do docs/LESSONS_CANON.md
-
-**Przykładowe użycie:**
 ```
 /lekcja
-Straciłem godzinę bo nie sprawdziłem czy Redis jest uruchomiony przed testem.
-```
-Model zapisze:
-```
-### W7 — Weryfikacja zależności przed testem
-Reguła: Przed uruchomieniem testów integracyjnych sprawdź czy zewnętrzne usługi (Redis, DB) są active.
-Dlaczego: Stracone 1h na diagnozowanie testu, który failował bo Redis był zatrzymany.
-Test: `docker ps | grep redis` przed `npm test` lub guard w setup.ts.
+Straciłem godzinę, bo przed testami integracyjnymi Redis nie był uruchomiony.
 ```
 
-**Różnica /lekcja vs /lekcja-g:**
-- `/lekcja` → "ten konkretny projekt", zapis bez pytania
-- `/lekcja-g` → "każdy projekt", zawsze pyta o zgodę
+zamienia się w wiersz w rodzaju `L-redis-przed-testami lesson accepted: Sprawdź, czy Redis działa,
+przed testami integracyjnymi; precedens: stracona 1 h; test: docker ps | grep redis przed npm test`.
+Identyfikatorów nigdy nie używa się ponownie.
 
----
+## /lekcja-g (/lesson-global) — propozycja lekcji dla wszystkich projektów
 
-## /lekcja-g — zapis wniosku globalnego
+**Kiedy:** wniosek jest na tyle ogólny, że przyda się w każdym projekcie.
 
-**Kiedy używać:** gdy wniosek jest tak ogólny, że będzie przydatny we WSZYSTKICH Twoich projektach.
+**Co robi:** zapisuje go w tym projekcie jako lekcję **proponowaną** i trzyma zobowiązanie `O-…`,
+dopóki jej nie zatwierdzisz. Sam nigdy nie zmienia instrukcji innego projektu ani Twoich
+instrukcji globalnych: dostajesz zatwierdzony tekst do wstawienia tam, gdzie należy.
 
-**Co robi:**
-1. Sprawdza: czy to naprawdę globalna? (test: "prawdziwa w innym projekcie?")
-2. Formułuje lekcję
-3. Pyta o zgodę (zawsze — bez zgody nie zapisuje)
-4. W Cowork: wstawia marker `[CANDIDATE GLOBAL]` i podaje polecenie dla CCT
-5. W CCT: zapisuje do `~/.claude/context/lessons.md` jako GL-NNN
+## /prowadz (/lead) — prowadzenie projektu wieloagentowego
 
-**Przykładowe użycie:**
-```
-/lekcja-g
-Zawsze sprawdzaj wersję API w dokumentacji przed implementacją — minęło 6 miesięcy i endpoint się zmienił.
-```
+**Edycja:** tylko GitHub + wielu agentów (`install.sh … --edition multi`).
 
-**Ważne:**
-- W Cowork: musisz potem odpalić polecenie w CCT, żeby lekcja faktycznie trafiła do warstwy globalnej
-- `/start` przy następnym wejściu przypomni o wiszących kandydatach jeśli zapomnisz
+**Co robi:** jeden wątek prowadzący planuje i decyduje; inni agenci albo modele implementują,
+testują i recenzują. Prowadzący pisze samodzielne briefy, czyta raporty `=== SHORT ===` (najwyżej
+8 linii), zapisuje decyzje Właściciela z jego dosłownymi słowami i przekazuje pracę kolejnemu
+wątkowi prowadzącemu przez `docs/lead/THREADS.md`. Po trzech rundach poprawek bez postępu
+zatrzymuje się i prosi o świeże spojrzenie na sam krok. Szczegóły: sekcja o edycji wieloagentowej
+w [README](../README.pl.md).
 
 ---
 
 ## Reguły, które warto znać
 
-**1. Jeden krok naraz**  
-`/start` zawsze podaje JEDEN następny krok. Nie próbuj planować 5 kroków do przodu w jednej sesji — to prowadzi do połowicznie zrobionej pracy i nieudokumentowanego stanu.
+1. **Jeden następny krok.** `/start` zawsze podaje dokładnie jeden następny krok.
+2. **Zapisane znaczy: jest karta.** Fakt jest zapisany dopiero wtedy, gdy skrypt zwróci kartę punktu kontrolnego.
+3. **„Zrobione” wymaga dowodu.** Zadanie jest zrobione, gdy spełniony jest jego warunek (test przeszedł,
+   plik istnieje), a nie gdy „wydaje się działać”.
+4. **Nie musisz nic pamiętać między sesjami.** O to chodzi: `/zamknij` i zapominasz do `/start`.
+5. **Agent nigdy nie edytuje plików stanu bezpośrednio.** Wszystkie zapisy idą przez skrypt.
 
-**2. DONE tylko z dowodem**  
-Krok w ROADMAP dostaje status DONE tylko gdy kolumna "Weryfikacja" jest spełniona (test przeszedł, plik istnieje, smoke-test OK). "Wydaje się działać" to nie DONE.
+## Pytania
 
-**3. Changelog przy każdym bumpie wersji**  
-Gdy model aktualizuje nagłówek dokumentu (Wersja + data), zawsze dopisuje też wiersz w changelogu. Bez tego `/start` zgłosi drift. Jeśli widzisz dziwny "drift alarm" — sprawdź czy changelog zgadza się z nagłówkiem.
+**Czy muszę wpisywać /start?** To najpewniejszy sposób. Skill może też zadziałać, gdy powiesz
+„gdzie skończyliśmy?”.
 
-**4. Nie musisz nic pamiętać między sesjami**  
-To jest cały sens systemu. `/start` odczyta aktualny stan. Pisz komendy, rób pracę, `/zamknij` — i zapomnij do następnej sesji.
+**A jeśli ostatnio pominąłem /zamknij?** `/start` i tak ruszy od ostatniego zapisanego punktu
+kontrolnego; wszystko, czego od tamtej pory nie zapisano, przepada. W długich sesjach używaj `/migawka`.
 
-**5. Pola dziennikowe rosną, pola stanowe są nadpisywane**  
-Changelog i nagłówek dokumentu są **przyrostowe** — dopisujesz warstwę, poprzednia zostaje. Pola opisujące stan (stan repo, następna otwarta decyzja, publiczny adres, hash wdrożonego artefaktu) mają **jedną** prawdziwą wartość i są **nadpisywane w całości po pomiarze**, ze znacznikiem `[zmierzone RRRR-MM-DD HH:MM UTC]`. Dopisanie do pola stanowego robi z niego listę sprzecznych stanów, w której czytający bierze pierwszy — czyli najstarszy. Jeśli w takim polu siedzi też trwała wiedza (obejścia, ograniczenia narzędzi), rozszczep je na dwa: `REPO_STATE` nadpisywane i `REPO_NOTES` przyrostowe.
+**Czy potrzebny jest internet?** Nie. Skrypt wymaga tylko Pythona 3.9+. Przy `TASKS=github` praca
+offline ogranicza się do zadań już przydzielonych.
 
-**6. Bramka jest składnią, nie komentarzem**  
-Wszędzie, gdzie warunek decyduje o wykonaniu (commit po sprawdzeniu, etap na DONE po bramce wyjścia), warunek musi być egzekwowalny. Komentarz „zrób Y tylko gdy X" nie zatrzyma niczego.
-
-**7. Pomiar ma datę ważności**  
-„Dziś zero zmian" zmierzone o 18:00 bywa nieprawdą o 21:00. Dlatego znacznik pomiaru zawiera godzinę, a nie samą datę — i dlatego zamykanie dnia przed jego końcem jest pomiarem przedwczesnym.
-
----
-
-## Typowy dzień pracy
-
-```
-# Poranek — wejście
-/start
-→ "Pozycja: Etap 2/5 · krok 3/7. Następny ruch: endpoint autoryzacji."
-
-# Praca (normalna rozmowa z Claude)
-...implementacja...
-
-# W połowie — ważna decyzja architektoniczna
-/migawka
-
-# Koniec dnia
-/zamknij
-→ diff + blok git add/commit (wklejam do terminala)
-```
-
----
-
-## Pytania i odpowiedzi
-
-**Q: Muszę wpisywać /start ręcznie?**  
-A: Nie. Skill cykl-start odpala się automatycznie gdy Claude wykryje, że zaczynasz sesję w projekcie (wrócenie po przerwie, "gdzie byliśmy"). Ale wpisanie /start jest zawsze bezpieczne.
-
-**Q: Co jeśli nie commituję przez kilka sesji?**  
-A: Nic się nie gubi — dokumenty są na dysku, a commit możesz zebrać zbiorczo z ostatniego `/zamknij`. Od 2.6.0 `/start` to jednak **zauważy i powie**: `STATE_PROBE` porówna żywy stan repo z tym, co zapisano w PROJECT_CONFIG, więc zaległe commity albo rozjazd z remote wyjdą na wejściu w sesję, a nie po tygodniu. Wcześniej praca niezacommitowana wyglądała identycznie jak zacommitowana, bo `/start` czytał wyłącznie pliki.
-
-**Q: Czy skille działają z GitHubem/Jirą/Notion?**  
-A: Te skille zarządzają wyłącznie lokalnymi dokumentami projektu (Markdown w repo). Integracja z zewnętrznymi narzędziami to osobny temat.
-
-**Q: Mogę używać /start bez /zamknij z poprzedniej sesji?**  
-A: Tak, ale dostaniesz drift-alarm jeśli dokumenty są nieaktualne. Model powie "HANDOFF jest z 3 dni temu" — potraktuj to jako sygnał do ręcznego /migawka przed pracą.
-
-**Q: Czy te skille działają w Claude API (bez Cowork/CCT)?**  
-A: Działają, ale musisz zainstalować je lokalnie w projekcie (Opcja C w instrukcji instalacji) i upewnić się, że masz włączone narzędzie do odczytu/zapisu plików (computer_use lub bash_tool).
+**Używałem v2.** Wersja 3 nie jest zgodna wstecz; postępuj według [MIGRATION-v2.md](MIGRATION-v2.md).
+Wersja tego przewodnika dla v2 jest w historii gita (tag `v2.8.2`, plik `docs/PRZEWODNIK-KOMEND.md`).
