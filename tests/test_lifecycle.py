@@ -1563,6 +1563,21 @@ class LifecycleTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'seven core'):
             self.lc.package_check(self.package(extra=['cykl-extra']))
 
+    def test_package_accepts_newer_uniform_version_only(self):
+        def stamp(version, names=None):
+            for skill in (self.root / 'pkg/skills').glob('cykl-*/SKILL.md'):
+                if names is None or skill.parent.name in names:
+                    skill.write_text(re.sub(r'cykl-lifecycle v\S+ -->', 'cykl-lifecycle v%s -->' % version, skill.read_text()))
+        self.package()
+        stamp('99.0.0')
+        self.assertEqual(len(self.lc.package_check(self.root / 'pkg')), 8)
+        stamp(self.lc.VERSION, {'cykl-start'})
+        with self.assertRaisesRegex(ValueError, 'skill version'):
+            self.lc.package_check(self.root / 'pkg')
+        stamp('0.0.1')
+        with self.assertRaisesRegex(ValueError, 'skill version'):
+            self.lc.package_check(self.root / 'pkg')
+
     def test_lead_skill_and_templates_are_capped_and_brief_is_valid(self):
         lead = REPO / 'skills/cykl-prowadzacy'
         for path in [lead / 'SKILL.md'] + list((lead / 'assets').iterdir()):
@@ -1575,11 +1590,11 @@ class LifecycleTests(unittest.TestCase):
 
     def test_public_texts_carry_no_private_markers(self):
         pattern = re.compile(r'bidsentinel|northstar|przetarg|witczak|micha[lł]|/users/|\bO\d{2,}\b|\bD\d{3,}\b', re.I)
-        paths = [REPO / 'README.md'] + [p for d in ('docs', 'skills') for p in (REPO / d).rglob('*') if p.is_file() and p.suffix in ('.md', '.json', '.py', '.txt')]
+        paths = [REPO / 'README.md', REPO / 'README.pl.md'] + [p for d in ('docs', 'skills') for p in (REPO / d).rglob('*') if p.is_file() and p.suffix in ('.md', '.json', '.py', '.txt')]
         for path in paths:
             if 'reports' in path.parts or path.name.startswith('test_'):
                 continue
-            self.assertIsNone(pattern.search(path.read_text().replace('witczakm/cykl-lifecycle', '').replace('Michał — personal plugins', '')), str(path))  # marketplace name kept: shipped since 2.4.0
+            self.assertIsNone(pattern.search(path.read_text().replace('witczakm/cykl-lifecycle', '').replace('witczakm/cycle-lifecycle', '').replace('Michał — personal plugins', '')), str(path))  # marketplace name kept: shipped since 2.4.0
 
     def test_version_stamped_consistently(self):
         version = self.lc.VERSION

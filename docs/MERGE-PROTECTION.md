@@ -1,4 +1,5 @@
 # Merge protection (GitHub and GitHub + multi-agent editions)
+**English** · [Polski](MERGE-PROTECTION.pl.md)
 
 [Hook sample](../hooks/pre-commit.sample) checks the complete staged tree, not the worktree.
 It can be bypassed and does not replace [lifecycle-integrity](../.github/workflows/lifecycle-integrity.yml).

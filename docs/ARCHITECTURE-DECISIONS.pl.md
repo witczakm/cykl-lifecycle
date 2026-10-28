@@ -1,10 +1,11 @@
-> Historical v2 guide. Version 3 is breaking: use the [current README and migration guide](../README.md). Do not run v2 cleanup/writers on schema 3.
-
 # Decyzje architektoniczne — cykl-lifecycle
+[English](ARCHITECTURE-DECISIONS.md) · **Polski**
+
+> **Dokument historyczny (v2, 2.6.0).** Wyjaśnia, dlaczego v2 zbudowano w ten sposób. Wersja 3 to przebudowa niezgodna wstecz: aktualne działanie opisują [README](../README.pl.md) i [przewodnik po komendach](COMMAND-GUIDE.pl.md). Nie uruchamiaj narzędzi porządkujących ani zapisujących z v2 na projektach w schemacie 3.
 
 **Wersja:** 2.6.0 · **Ostatnia aktualizacja:** 2026-08-04
 
-Ten dokument tłumaczy **dlaczego** system wygląda tak, a nie inaczej. Każda decyzja ma precedens — awarię albo pomiar, który ją wymusił. Jeśli szukasz **jak używać**, idź do [PRZEWODNIK-KOMEND.md](PRZEWODNIK-KOMEND.md); jeśli szukasz **co się zmieniło**, do [CHANGELOG.md](../CHANGELOG.md).
+Ten dokument tłumaczy **dlaczego** system wygląda tak, a nie inaczej. Każda decyzja ma precedens — awarię albo pomiar, który ją wymusił. Jeśli szukasz **jak używać**, idź do [przewodnika po komendach](COMMAND-GUIDE.pl.md); jeśli szukasz **co się zmieniło**, do [CHANGELOG.md](../CHANGELOG.md).
 
 ---
 

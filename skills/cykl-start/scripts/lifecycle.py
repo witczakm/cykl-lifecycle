@@ -406,6 +406,7 @@ def package_check(root=None):
     found = sorted(skills.glob('cykl-*/SKILL.md'))
     names = {skill.parent.name for skill in found}
     require(CORE_SKILLS <= names <= CORE_SKILLS | OPTIONAL_SKILLS, 'package must contain seven core skills and at most cykl-prowadzacy')
+    versions = set()
     for skill in found:
         for path in [skill] + list(skill.parent.glob('assets/*.md')) + list(skill.parent.glob('assets/*.json')) + list(skill.parent.glob('references/*.md')):
             text = read(skills, path.relative_to(skills).as_posix(), 4096)
@@ -414,7 +415,11 @@ def package_check(root=None):
         desc = re.search(r'^description: (.+)$', text, re.M)
         require(desc is not None, 'skill description missing')
         bounded(desc[1], 512, 'description')
-        require('<!-- cykl-lifecycle v' + VERSION + ' -->' in text, 'skill version')
+        marks = re.findall(r'<!-- cykl-lifecycle v(\d+)\.(\d+)\.(\d+) -->', text)
+        require(len(marks) == 1, 'skill version')
+        versions.add(tuple(map(int, marks[0])))
+    # The trusted validator is the previous release: accept one uniform version, never a downgrade.
+    require(len(versions) == 1 and versions.pop() >= tuple(map(int, VERSION.split('.'))), 'skill version')
     return found
 
 
